@@ -5,16 +5,28 @@ export interface ADocConfig {
   name: string;
   title: string;
   description: string;
-  theme: string;
+  theme?: string;
   import?: {
     feishu?: {
       appId: string;
       appSecret: string;
+      spaceId?: string;
+    };
+    notion?: {
+      token: string;
+      databaseId?: string;
     };
   };
+  build?: {
+    theme?: string;
+    outDir?: string;
+    base?: string;
+  };
   deploy?: {
-    target: string;
+    target?: string;
     repo?: string;
+    base?: string;
+    domain?: string;
   };
 }
 

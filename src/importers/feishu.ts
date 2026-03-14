@@ -14,6 +14,7 @@ export interface WikiNode {
   obj_type: string;
   title: string;
   parent_node_token?: string;
+  has_child?: boolean;
   children?: WikiNode[];
 }
 
@@ -28,12 +29,45 @@ export class FeishuClient {
   }
   
   async init(): Promise<void> {
-    const resp = await this.request('POST', '/auth/v3/tenant_access_token/internal', {
+    const body = JSON.stringify({
       app_id: this.appId,
       app_secret: this.appSecret
     });
-    this.accessToken = resp.tenant_access_token;
-    console.log('✅ Feishu auth successful');
+    
+    const resp = await this.rawRequest('POST', '/auth/v3/tenant_access_token/internal', body, false);
+    
+    if (resp.tenant_access_token) {
+      this.accessToken = resp.tenant_access_token;
+      console.log('✅ Feishu auth successful');
+    } else {
+      throw new Error(`Auth failed: ${JSON.stringify(resp)}`);
+    }
+  }
+  
+  // 获取所有节点（递归）
+  async getAllNodes(spaceId: string): Promise<WikiNode[]> {
+    const rootNodes = await this.getSpaceNodes(spaceId);
+    
+    // 递归获取所有子节点
+    const allNodes: WikiNode[] = [];
+    
+    const fetchChildren = async (nodes: WikiNode[]): Promise<void> => {
+      for (const node of nodes) {
+        allNodes.push(node);
+        
+        if (node.has_child) {
+          const children = await this.getNodeChildren(spaceId, node.node_token);
+          node.children = children;
+          await fetchChildren(children);
+        }
+        
+        // 延迟避免频率限制
+        await sleep(300);
+      }
+    };
+    
+    await fetchChildren(rootNodes);
+    return allNodes;
   }
   
   async getSpaceNodes(spaceId: string): Promise<WikiNode[]> {
@@ -51,6 +85,24 @@ export class FeishuClient {
     } while (pageToken);
     
     return allNodes;
+  }
+  
+  // 获取节点的子节点
+  async getNodeChildren(spaceId: string, parentToken: string): Promise<WikiNode[]> {
+    const children: WikiNode[] = [];
+    let pageToken = '';
+    
+    do {
+      const url = `/wiki/v2/spaces/${spaceId}/nodes?parent_node_token=${parentToken}&page_size=50${pageToken ? `&page_token=${pageToken}` : ''}`;
+      const resp = await this.request('GET', url);
+      
+      if (resp.items) {
+        children.push(...resp.items);
+      }
+      pageToken = resp.page_token || '';
+    } while (pageToken);
+    
+    return children;
   }
   
   async getDocumentContent(docToken: string): Promise<string> {
@@ -88,7 +140,6 @@ export class FeishuClient {
       
       const req = https.request(options, (res) => {
         if (res.statusCode === 302 || res.statusCode === 301) {
-          // 处理重定向
           const redirectUrl = res.headers.location;
           if (redirectUrl) {
             https.get(redirectUrl, (redirectRes) => {
@@ -96,7 +147,7 @@ export class FeishuClient {
               redirectRes.on('data', (chunk) => chunks.push(chunk));
               redirectRes.on('end', () => {
                 const buffer = Buffer.concat(chunks);
-                if (buffer.length > 1000) { // 大于1KB才是有效图片
+                if (buffer.length > 1000) {
                   fs.writeFileSync(outputPath, buffer);
                   resolve(true);
                 } else {
@@ -135,54 +186,47 @@ export class FeishuClient {
       const type = block.block_type;
       
       switch (type) {
-        case 2: // Text/Paragraph
+        case 2:
           if (block.text) {
             lines.push(this.textElementsToMd(block.text.elements));
             lines.push('');
           }
           break;
-          
-        case 3: // Heading 1
+        case 3:
           if (block.heading1) {
             lines.push(`# ${this.textElementsToMd(block.heading1.elements)}`);
             lines.push('');
           }
           break;
-          
-        case 4: // Heading 2
+        case 4:
           if (block.heading2) {
             lines.push(`## ${this.textElementsToMd(block.heading2.elements)}`);
             lines.push('');
           }
           break;
-          
-        case 5: // Heading 3
+        case 5:
           if (block.heading3) {
             lines.push(`### ${this.textElementsToMd(block.heading3.elements)}`);
             lines.push('');
           }
           break;
-          
-        case 6: // Heading 4
+        case 6:
           if (block.heading4) {
             lines.push(`#### ${this.textElementsToMd(block.heading4.elements)}`);
             lines.push('');
           }
           break;
-          
-        case 12: // Bullet list
+        case 12:
           if (block.bullet) {
             lines.push(`- ${this.textElementsToMd(block.bullet.elements)}`);
           }
           break;
-          
-        case 13: // Ordered list
+        case 13:
           if (block.ordered) {
             lines.push(`1. ${this.textElementsToMd(block.ordered.elements)}`);
           }
           break;
-          
-        case 14: // Code block
+        case 14:
           if (block.code) {
             const lang = block.code.style?.language || '';
             lines.push('```' + lang);
@@ -191,8 +235,7 @@ export class FeishuClient {
             lines.push('');
           }
           break;
-          
-        case 27: // Image
+        case 27:
           if (block.image?.token) {
             const token = block.image.token;
             imageTokens.push(token);
@@ -200,8 +243,7 @@ export class FeishuClient {
             lines.push('');
           }
           break;
-          
-        case 18: // Callout
+        case 18:
           if (block.callout) {
             lines.push('::: tip');
             lines.push(this.textElementsToMd(block.callout.elements || []));
@@ -209,17 +251,14 @@ export class FeishuClient {
             lines.push('');
           }
           break;
-          
-        case 20: // Divider
+        case 20:
           lines.push('---');
           lines.push('');
           break;
       }
     }
     
-    // 存储图片token供后续下载
     (this as any)._lastImageTokens = imageTokens;
-    
     return lines.join('\n');
   }
   
@@ -247,16 +286,29 @@ export class FeishuClient {
     }).join('');
   }
   
-  private async request(method: string, path: string, body?: any): Promise<any> {
+  private async request(method: string, path: string, body?: string): Promise<any> {
+    return this.rawRequest(method, path, body, true);
+  }
+  
+  private async rawRequest(method: string, path: string, body?: string, useAuth: boolean = true): Promise<any> {
     return new Promise((resolve, reject) => {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json; charset=utf-8'
+      };
+      
+      if (useAuth && this.accessToken) {
+        headers['Authorization'] = `Bearer ${this.accessToken}`;
+      }
+      
+      if (body) {
+        headers['Content-Length'] = Buffer.byteLength(body).toString();
+      }
+      
       const options = {
         hostname: 'open.feishu.cn',
         path: `/open-apis${path}`,
         method,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          ...(this.accessToken ? { 'Authorization': `Bearer ${this.accessToken}` } : {})
-        }
+        headers
       };
       
       const req = https.request(options, (res) => {
@@ -265,10 +317,10 @@ export class FeishuClient {
         res.on('end', () => {
           try {
             const json = JSON.parse(data);
-            if (json.code !== 0) {
+            if (json.code !== undefined && json.code !== 0) {
               reject(new Error(`Feishu API error ${json.code}: ${json.msg}`));
             } else {
-              resolve(json.data || {});
+              resolve(json.data || json);
             }
           } catch (e) {
             reject(new Error(`Failed to parse response: ${data.slice(0, 200)}`));
@@ -277,13 +329,12 @@ export class FeishuClient {
       });
       
       req.on('error', reject);
-      if (body) req.write(JSON.stringify(body));
+      if (body) req.write(body);
       req.end();
     });
   }
 }
 
-// 辅助函数：延迟
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }

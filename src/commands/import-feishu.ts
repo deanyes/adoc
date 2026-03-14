@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { FeishuClient, WikiNode, sleep } from '../importers/feishu.js';
-import { loadConfig, saveConfig } from '../utils/config.js';
+import { loadConfig } from '../utils/config.js';
 
 interface DocInfo {
   id: string;
@@ -9,7 +9,6 @@ interface DocInfo {
   path: string;
   category?: string;
   images: string[];
-  parent?: string;
 }
 
 export async function importFeishu(args: string[]) {
@@ -22,8 +21,6 @@ export async function importFeishu(args: string[]) {
   
   if (!appId || !appSecret) {
     console.error('Error: Feishu credentials not configured');
-    console.error('Add to adoc.config.json:');
-    console.error('  "import": { "feishu": { "appId": "...", "appSecret": "..." } }');
     process.exit(1);
   }
   
@@ -34,73 +31,30 @@ export async function importFeishu(args: string[]) {
   
   console.log(`\n📚 Importing from Feishu space: ${spaceId}\n`);
   
-  // 初始化客户端
   const client = new FeishuClient({ appId, appSecret });
   await client.init();
   
-  // 获取所有节点
-  console.log('Fetching document list...');
-  const nodes = await client.getSpaceNodes(spaceId);
-  console.log(`Found ${nodes.length} documents\n`);
+  // 递归获取所有节点
+  console.log('Fetching all documents (including children)...');
+  const allNodes = await client.getAllNodes(spaceId);
+  console.log(`Found ${allNodes.length} documents total\n`);
   
   // 准备目录
   const docsDir = path.resolve('docs');
   const imagesDir = path.join(docsDir, 'public', 'images');
   fs.mkdirSync(imagesDir, { recursive: true });
   
-  // 构建目录树
+  // 构建节点映射
   const nodeMap = new Map<string, WikiNode>();
-  const rootNodes: WikiNode[] = [];
-  
-  for (const node of nodes) {
+  for (const node of allNodes) {
     nodeMap.set(node.node_token, node);
-    if (!node.parent_node_token) {
-      rootNodes.push(node);
-    }
   }
   
-  // 建立父子关系
-  for (const node of nodes) {
-    if (node.parent_node_token) {
-      const parent = nodeMap.get(node.parent_node_token);
-      if (parent) {
-        if (!parent.children) parent.children = [];
-        parent.children.push(node);
-      }
-    }
-  }
-  
-  // 导入文档
+  // 导入所有文档
   const docInfos: DocInfo[] = [];
-  const sidebar: any[] = [];
+  const sidebarGroups: Record<string, any[]> = {};
   
-  await importNodes(rootNodes, '', client, docsDir, imagesDir, docInfos, sidebar, nodeMap);
-  
-  // 生成 VitePress 配置
-  generateVitePressConfig(docsDir, sidebar, config);
-  
-  // 更新索引
-  updateIndex(docInfos);
-  
-  console.log(`\n✅ Import complete!`);
-  console.log(`   Documents: ${docInfos.length}`);
-  console.log(`   Images: ${docInfos.reduce((sum, d) => sum + d.images.length, 0)}`);
-  console.log(`\nNext steps:`);
-  console.log(`   adoc build`);
-  console.log(`   adoc preview`);
-}
-
-async function importNodes(
-  nodes: WikiNode[],
-  parentPath: string,
-  client: FeishuClient,
-  docsDir: string,
-  imagesDir: string,
-  docInfos: DocInfo[],
-  sidebarItems: any[],
-  nodeMap: Map<string, WikiNode>
-): Promise<void> {
-  for (const node of nodes) {
+  for (const node of allNodes) {
     if (node.obj_type !== 'docx') {
       console.log(`  Skipping non-docx: ${node.title}`);
       continue;
@@ -108,13 +62,16 @@ async function importNodes(
     
     console.log(`📄 ${node.title}`);
     
+    // 确定目录路径
+    const pathParts = getNodePath(node, nodeMap);
+    const category = pathParts.length > 1 ? pathParts[0] : '';
+    
     // 生成 slug
     const slug = slugify(node.title);
-    const subDir = parentPath ? path.join(parentPath) : '';
+    const subDir = category ? slugify(category) : '';
     const docPath = subDir ? `${subDir}/${slug}.md` : `${slug}.md`;
     const fullPath = path.join(docsDir, docPath);
     
-    // 确保目录存在
     fs.mkdirSync(path.dirname(fullPath), { recursive: true });
     
     // 获取文档内容
@@ -136,10 +93,9 @@ async function importNodes(
           if (success) {
             images.push(token);
           } else {
-            console.log(`   ⚠️  Image download failed: ${token}`);
+            console.log(`   ⚠️  Image download failed`);
           }
           
-          // 延迟避免频率限制
           await sleep(1000);
         } else {
           images.push(token);
@@ -151,54 +107,72 @@ async function importNodes(
     }
     
     // 生成 frontmatter
-    const frontmatter = generateFrontmatter(node.title, parentPath);
-    const fullContent = frontmatter + '\n' + content;
+    const frontmatter = [
+      '---',
+      `title: "${node.title}"`,
+      category ? `category: "${category}"` : null,
+      `lastUpdated: ${new Date().toISOString()}`,
+      '---'
+    ].filter(Boolean).join('\n');
     
+    const fullContent = frontmatter + '\n\n' + content;
     fs.writeFileSync(fullPath, fullContent);
     
-    const docInfo: DocInfo = {
+    docInfos.push({
       id: slug,
       title: node.title,
       path: docPath,
-      category: parentPath || undefined,
-      images,
-      parent: node.parent_node_token || undefined
-    };
-    docInfos.push(docInfo);
+      category,
+      images
+    });
     
     // 构建 sidebar
-    const sidebarItem: any = {
+    const groupKey = category || '开始';
+    if (!sidebarGroups[groupKey]) {
+      sidebarGroups[groupKey] = [];
+    }
+    sidebarGroups[groupKey].push({
       text: node.title,
       link: '/' + docPath.replace('.md', '')
-    };
+    });
     
-    // 处理子节点
-    if (node.children && node.children.length > 0) {
-      sidebarItem.items = [];
-      sidebarItem.collapsed = false;
-      
-      const childPath = parentPath ? `${parentPath}/${slug}` : slug;
-      await importNodes(
-        node.children,
-        childPath,
-        client,
-        docsDir,
-        imagesDir,
-        docInfos,
-        sidebarItem.items,
-        nodeMap
-      );
-    }
-    
-    sidebarItems.push(sidebarItem);
-    
-    // 延迟避免 API 频率限制
     await sleep(500);
   }
+  
+  // 生成 VitePress 配置
+  generateVitePressConfig(docsDir, sidebarGroups, config);
+  
+  // 更新索引
+  updateIndex(docInfos);
+  
+  const totalImages = docInfos.reduce((sum, d) => sum + d.images.length, 0);
+  
+  console.log(`\n✅ Import complete!`);
+  console.log(`   Documents: ${docInfos.length}`);
+  console.log(`   Images: ${totalImages}`);
+  console.log(`\nNext steps:`);
+  console.log(`   adoc build`);
+  console.log(`   adoc preview`);
+}
+
+function getNodePath(node: WikiNode, nodeMap: Map<string, WikiNode>): string[] {
+  const path: string[] = [node.title];
+  let current = node;
+  
+  while (current.parent_node_token) {
+    const parent = nodeMap.get(current.parent_node_token);
+    if (parent) {
+      path.unshift(parent.title);
+      current = parent;
+    } else {
+      break;
+    }
+  }
+  
+  return path;
 }
 
 function slugify(title: string): string {
-  // 中文转拼音或使用简化处理
   return title
     .toLowerCase()
     .replace(/[\s]+/g, '-')
@@ -206,27 +180,17 @@ function slugify(title: string): string {
     .slice(0, 50) || 'untitled';
 }
 
-function generateFrontmatter(title: string, category?: string): string {
-  const lines = [
-    '---',
-    `title: "${title}"`,
-  ];
-  
-  if (category) {
-    lines.push(`category: "${category}"`);
-  }
-  
-  lines.push(`lastUpdated: ${new Date().toISOString()}`);
-  lines.push('---');
-  
-  return lines.join('\n');
-}
-
-function generateVitePressConfig(docsDir: string, sidebar: any[], config: any): void {
+function generateVitePressConfig(docsDir: string, groups: Record<string, any[]>, config: any): void {
   const vitepressDir = path.join(docsDir, '.vitepress');
   fs.mkdirSync(vitepressDir, { recursive: true });
   
   const base = config.deploy?.base || '/';
+  
+  const sidebar = Object.entries(groups).map(([text, items]) => ({
+    text,
+    collapsed: false,
+    items
+  }));
   
   const configContent = `
 import { defineConfig } from 'vitepress'
@@ -235,6 +199,8 @@ export default defineConfig({
   title: '${config.title || 'Documentation'}',
   description: '${config.description || ''}',
   base: '${base}',
+  
+  ignoreDeadLinks: true,
   
   head: [
     ['link', { rel: 'icon', href: '${base}favicon.ico' }]
@@ -247,10 +213,6 @@ export default defineConfig({
     
     sidebar: ${JSON.stringify(sidebar, null, 6)},
     
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com' }
-    ],
-    
     search: {
       provider: 'local'
     },
@@ -258,10 +220,6 @@ export default defineConfig({
     outline: {
       level: [2, 3],
       label: '目录'
-    },
-    
-    lastUpdated: {
-      text: '最后更新'
     }
   }
 })
