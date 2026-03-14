@@ -15,95 +15,74 @@ Agent-first 文档管理工具。让 AI Agent 创建、维护、发布文档。
 首次使用前，检查 ADoc 是否已安装：
 
 ```bash
-which adoc || (
-  echo "正在安装 ADoc..."
-  git clone --depth 1 https://github.com/deanyes/adoc.git ~/.adoc
-  cd ~/.adoc && npm install && npm run build && npm link
-)
+which adoc || ~/.openclaw/skills/adoc/install.sh
 ```
 
-## 核心工作流
-
-### 1. 初始化文档项目
-
-```bash
-adoc init <project-name>
-cd <project-name>
-```
-
-### 2. 从飞书导入（如有）
-
-编辑 `adoc.config.json` 配置飞书凭证：
-```json
-{
-  "import": {
-    "feishu": {
-      "appId": "cli_xxx",
-      "appSecret": "xxx"
-    }
-  }
-}
-```
-
-然后导入：
-```bash
-adoc import feishu <space-id>
-```
-
-### 3. 创建/更新文档
-
-```bash
-adoc create "文档标题"
-adoc update <id>
-adoc list
-adoc search "关键词"
-```
-
-### 4. 构建预览
-
-```bash
-adoc build
-adoc preview  # 本地预览
-```
-
-### 5. 部署
-
-```bash
-adoc deploy github-pages
-```
-
-## 常用命令速查
+## 核心命令
 
 | 命令 | 说明 |
 |------|------|
-| `adoc init` | 初始化项目 |
+| `adoc init <name>` | 初始化项目 |
 | `adoc create <title>` | 创建文档 |
 | `adoc update <id>` | 更新文档 |
+| `adoc get <id>` | 获取内容 |
 | `adoc list` | 列出文档 |
+| `adoc list --tree` | 树形显示 |
 | `adoc search <query>` | 搜索 |
+| `adoc index` | 重建索引 |
 | `adoc import feishu <id>` | 从飞书导入 |
-| `adoc build` | 构建静态站点 |
+| `adoc build` | 构建 |
 | `adoc deploy` | 部署 |
-| `adoc status` | 查看状态 |
+
+## 常用模式
+
+### 创建文档
+```bash
+adoc create "文档标题" --content "# 标题\n\n内容"
+```
+
+### 管道输入
+```bash
+echo "内容" | adoc create "标题" --stdin
+echo "新内容" | adoc update doc-id --stdin
+```
+
+### 完整流程
+```bash
+adoc init my-docs && cd my-docs
+adoc create "快速开始"
+adoc build
+adoc deploy
+```
 
 ## 典型场景
 
-### 场景：用户说"帮我更新产品文档，新增了 X 功能"
+### 场景：更新产品文档
 
-1. `adoc list` 查看现有文档
-2. `adoc get <相关文档id>` 获取内容
-3. 修改内容，`adoc update <id>` 保存
-4. `adoc build` 构建
-5. `adoc deploy` 部署
-6. 告诉用户"文档已更新，预览：<URL>"
+```bash
+# 1. 查看现有文档
+adoc list --tree
 
-### 场景：用户说"把飞书知识库同步到官网"
+# 2. 获取要更新的文档
+adoc get feature-guide
 
-1. 确认飞书凭证已配置
-2. `adoc import feishu <space-id>`
-3. `adoc build`
-4. `adoc deploy github-pages`
-5. 返回部署 URL
+# 3. 更新内容
+adoc update feature-guide --content "新内容"
+
+# 4. 构建部署
+adoc build && adoc deploy
+```
+
+### 场景：从飞书导入
+
+```bash
+# 1. 配置飞书凭证（adoc.config.json）
+# 2. 导入
+adoc import feishu <space-id>
+
+# 3. 部署
+adoc build && adoc deploy github-pages
+```
 
 ## 注意事项
 
