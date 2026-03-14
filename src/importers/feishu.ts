@@ -44,11 +44,8 @@ export class FeishuClient {
     }
   }
   
-  // 获取所有节点（递归）
   async getAllNodes(spaceId: string): Promise<WikiNode[]> {
     const rootNodes = await this.getSpaceNodes(spaceId);
-    
-    // 递归获取所有子节点
     const allNodes: WikiNode[] = [];
     
     const fetchChildren = async (nodes: WikiNode[]): Promise<void> => {
@@ -61,7 +58,6 @@ export class FeishuClient {
           await fetchChildren(children);
         }
         
-        // 延迟避免频率限制
         await sleep(300);
       }
     };
@@ -87,7 +83,6 @@ export class FeishuClient {
     return allNodes;
   }
   
-  // 获取节点的子节点
   async getNodeChildren(spaceId: string, parentToken: string): Promise<WikiNode[]> {
     const children: WikiNode[] = [];
     let pageToken = '';
@@ -181,69 +176,115 @@ export class FeishuClient {
   private blocksToMarkdown(blocks: any[], docToken: string): string {
     const lines: string[] = [];
     const imageTokens: string[] = [];
+    let inList = false;
     
-    for (const block of blocks) {
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
       const type = block.block_type;
+      const nextBlock = blocks[i + 1];
+      
+      // 处理列表结束
+      if (inList && type !== 12 && type !== 13) {
+        inList = false;
+        lines.push('');
+      }
       
       switch (type) {
-        case 2:
+        case 1: // Page (skip)
+          break;
+          
+        case 2: // Text/Paragraph
           if (block.text) {
-            lines.push(this.textElementsToMd(block.text.elements));
-            lines.push('');
+            const text = this.textElementsToMd(block.text.elements);
+            if (text.trim()) {
+              lines.push(text);
+              lines.push('');
+            }
           }
           break;
-        case 3:
+          
+        case 3: // Heading 1
           if (block.heading1) {
             lines.push(`# ${this.textElementsToMd(block.heading1.elements)}`);
             lines.push('');
           }
           break;
-        case 4:
+          
+        case 4: // Heading 2
           if (block.heading2) {
             lines.push(`## ${this.textElementsToMd(block.heading2.elements)}`);
             lines.push('');
           }
           break;
-        case 5:
+          
+        case 5: // Heading 3
           if (block.heading3) {
             lines.push(`### ${this.textElementsToMd(block.heading3.elements)}`);
             lines.push('');
           }
           break;
-        case 6:
+          
+        case 6: // Heading 4
           if (block.heading4) {
             lines.push(`#### ${this.textElementsToMd(block.heading4.elements)}`);
             lines.push('');
           }
           break;
-        case 12:
+          
+        case 7: // Heading 5
+          if (block.heading5) {
+            lines.push(`##### ${this.textElementsToMd(block.heading5.elements)}`);
+            lines.push('');
+          }
+          break;
+          
+        case 8: // Heading 6
+          if (block.heading6) {
+            lines.push(`###### ${this.textElementsToMd(block.heading6.elements)}`);
+            lines.push('');
+          }
+          break;
+          
+        case 12: // Bullet list
+          inList = true;
           if (block.bullet) {
             lines.push(`- ${this.textElementsToMd(block.bullet.elements)}`);
           }
           break;
-        case 13:
+          
+        case 13: // Ordered list
+          inList = true;
           if (block.ordered) {
             lines.push(`1. ${this.textElementsToMd(block.ordered.elements)}`);
           }
           break;
-        case 14:
+          
+        case 14: // Code block
           if (block.code) {
-            const lang = block.code.style?.language || '';
+            const lang = this.mapLanguage(block.code.style?.language);
             lines.push('```' + lang);
             lines.push(this.textElementsToMd(block.code.elements));
             lines.push('```');
             lines.push('');
           }
           break;
-        case 27:
-          if (block.image?.token) {
-            const token = block.image.token;
-            imageTokens.push(token);
-            lines.push(`![](/images/${token}.png)`);
+          
+        case 15: // Quote
+          if (block.quote) {
+            const quoteText = this.textElementsToMd(block.quote.elements);
+            lines.push(`> ${quoteText}`);
             lines.push('');
           }
           break;
-        case 18:
+          
+        case 17: // Todo/Checkbox
+          if (block.todo) {
+            const checked = block.todo.style?.done ? 'x' : ' ';
+            lines.push(`- [${checked}] ${this.textElementsToMd(block.todo.elements)}`);
+          }
+          break;
+          
+        case 18: // Callout
           if (block.callout) {
             lines.push('::: tip');
             lines.push(this.textElementsToMd(block.callout.elements || []));
@@ -251,15 +292,116 @@ export class FeishuClient {
             lines.push('');
           }
           break;
-        case 20:
+          
+        case 20: // Divider
           lines.push('---');
           lines.push('');
+          break;
+          
+        case 27: // Image
+          if (block.image?.token) {
+            const token = block.image.token;
+            imageTokens.push(token);
+            lines.push(`![](/images/${token}.png)`);
+            lines.push('');
+          }
+          break;
+          
+        case 23: // Table
+          // 表格需要特殊处理，这里先跳过
+          lines.push('*[表格内容]*');
+          lines.push('');
+          break;
+          
+        case 31: // Iframe/Embed
+          if (block.iframe?.component?.url) {
+            lines.push(`[嵌入内容](${block.iframe.component.url})`);
+            lines.push('');
+          }
+          break;
+          
+        default:
+          // 未知类型，记录调试信息
+          // console.log(`Unknown block type: ${type}`);
           break;
       }
     }
     
     (this as any)._lastImageTokens = imageTokens;
     return lines.join('\n');
+  }
+  
+  private mapLanguage(langCode: number | undefined): string {
+    const langMap: Record<number, string> = {
+      1: 'plaintext',
+      2: 'abap',
+      3: 'ada',
+      4: 'apache',
+      5: 'apex',
+      6: 'assembly',
+      7: 'bash',
+      8: 'c',
+      9: 'csharp',
+      10: 'cpp',
+      11: 'clojure',
+      12: 'cmake',
+      13: 'coffeescript',
+      14: 'css',
+      15: 'dart',
+      16: 'delphi',
+      17: 'django',
+      18: 'dockerfile',
+      19: 'erlang',
+      20: 'fortran',
+      21: 'fsharp',
+      22: 'gherkin',
+      23: 'glsl',
+      24: 'go',
+      25: 'graphql',
+      26: 'groovy',
+      27: 'haskell',
+      28: 'html',
+      29: 'http',
+      30: 'java',
+      31: 'javascript',
+      32: 'json',
+      33: 'julia',
+      34: 'kotlin',
+      35: 'latex',
+      36: 'less',
+      37: 'lisp',
+      38: 'lua',
+      39: 'makefile',
+      40: 'markdown',
+      41: 'matlab',
+      42: 'nginx',
+      43: 'objectivec',
+      44: 'ocaml',
+      45: 'perl',
+      46: 'php',
+      47: 'powershell',
+      48: 'prolog',
+      49: 'protobuf',
+      50: 'python',
+      51: 'r',
+      52: 'ruby',
+      53: 'rust',
+      54: 'sass',
+      55: 'scala',
+      56: 'scheme',
+      57: 'scss',
+      58: 'shell',
+      59: 'sql',
+      60: 'swift',
+      61: 'typescript',
+      62: 'verilog',
+      63: 'vhdl',
+      64: 'visual_basic',
+      65: 'xml',
+      66: 'yaml',
+    };
+    
+    return langMap[langCode || 0] || '';
   }
   
   getLastImageTokens(): string[] {
@@ -278,9 +420,21 @@ export class FeishuClient {
         if (style.italic) text = `*${text}*`;
         if (style.strikethrough) text = `~~${text}~~`;
         if (style.inline_code) text = `\`${text}\``;
-        if (style.link?.url) text = `[${text}](${style.link.url})`;
+        if (style.link?.url) {
+          const url = style.link.url;
+          // 处理飞书内部链接
+          if (url.startsWith('https://')) {
+            text = `[${text}](${url})`;
+          }
+        }
         
         return text;
+      }
+      if (el.mention_user) {
+        return `@${el.mention_user.user_id || 'user'}`;
+      }
+      if (el.mention_doc) {
+        return `[文档链接]`;
       }
       return '';
     }).join('');
