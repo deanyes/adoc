@@ -3,6 +3,7 @@ import { build } from './commands/build.js';
 import { deploy } from './commands/deploy.js';
 import { init } from './commands/init.js';
 import { preview } from './commands/preview.js';
+import { sync } from './commands/sync.js';
 import { create, update, get, list, deleteDoc, search } from './commands/docs.js';
 
 const HELP = `
@@ -21,8 +22,9 @@ Commands:
   delete <id>              Delete a document
   search <query>           Search documents
   
-  # Import
-  import feishu <url>      Import from Feishu
+  # Import & Sync
+  import feishu <url>      Import from Feishu wiki
+  sync                     Sync changes from source
   
   # Build & Deploy
   build                    Build static site
@@ -35,9 +37,9 @@ Options:
 
 Examples:
   adoc init my-docs
-  adoc create "Getting Started" --content "# Welcome"
-  adoc update getting-started --append "## New Section"
-  adoc preview
+  adoc import feishu 7434170131409928194
+  adoc sync
+  adoc build
   adoc deploy github-pages
 `;
 
@@ -83,6 +85,9 @@ export async function main(args: string[]) {
         } else {
           console.error(`Unknown import source: ${args[1]}`);
         }
+        break;
+      case 'sync':
+        await sync(args.slice(1));
         break;
       case 'build':
         await build(args.slice(1));
