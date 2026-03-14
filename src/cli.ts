@@ -5,7 +5,7 @@ import { init } from './commands/init.js';
 import { preview } from './commands/preview.js';
 import { sync } from './commands/sync.js';
 import { status } from './commands/status.js';
-import { create, update, get, list, deleteDoc, search } from './commands/docs.js';
+import { create, update, get, list, deleteDoc, search, index } from './commands/docs.js';
 
 const HELP = `
 ADoc - Agent-first documentation tool
@@ -23,6 +23,7 @@ Commands:
   list                     List all documents
   delete <id>              Delete a document
   search <query>           Search documents
+  index                    Rebuild document index
   
   # Import & Sync
   import feishu <space-id> Import from Feishu wiki
@@ -41,7 +42,7 @@ Options:
 export async function main(args: string[]) {
   const cmd = args[0];
   
-  if (!cmd || cmd === '-h' || cmd === '--help') {
+  if (!cmd || cmd === '-h' || cmd === '--help' || cmd === 'help') {
     console.log(HELP);
     return;
   }
@@ -76,6 +77,9 @@ export async function main(args: string[]) {
         break;
       case 'search':
         await search(args.slice(1));
+        break;
+      case 'index':
+        await index(args.slice(1));
         break;
       case 'import':
         if (args[1] === 'feishu') {
