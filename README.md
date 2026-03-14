@@ -6,13 +6,18 @@
 
 ## Install
 
-```bash
-# From GitHub (recommended)
-npm install -g github:deanyes/adoc
+### One-line Install (Recommended)
 
-# Or clone and link
+```bash
+curl -fsSL https://raw.githubusercontent.com/deanyes/adoc/main/install.sh | bash
+```
+
+### Manual Install
+
+```bash
 git clone https://github.com/deanyes/adoc.git
-cd adoc && npm install && npm link
+cd adoc
+npm install && npm run build && npm link
 ```
 
 ## Quick Start
@@ -37,23 +42,22 @@ adoc deploy github-pages
 
 ## MCP Integration
 
+For Claude Desktop / Cursor:
+
 ```json
 {
   "mcpServers": {
-    "adoc": {
-      "command": "adoc-mcp"
-    }
+    "adoc": { "command": "adoc-mcp" }
   }
 }
 ```
 
-## Docs
+## Documentation
 
 - [快速开始](./docs/getting-started.md)
 - [CLI 参考](./docs/cli-reference.md)
 - [飞书导入](./docs/feishu-import.md)
 - [MCP 集成](./docs/mcp-integration.md)
-- [部署指南](./docs/deployment.md)
 
 ## License
 

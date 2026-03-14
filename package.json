@@ -9,15 +9,12 @@
   },
   "files": [
     "bin/",
-    "src/",
     "dist/",
     "README.md",
-    "LICENSE",
-    "tsconfig.json"
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
-    "postinstall": "npm run build || true",
     "test": "node bin/adoc.js --version"
   },
   "keywords": ["documentation", "agent", "ai", "mcp"],
@@ -28,11 +25,11 @@
     "url": "git+https://github.com/deanyes/adoc.git"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
-    "typescript": "^5.0.0"
+    "@modelcontextprotocol/sdk": "^1.27.1"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
