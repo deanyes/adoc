@@ -4,14 +4,14 @@
   "description": "Agent-first documentation tool. Let AI agents create and maintain docs.",
   "type": "module",
   "bin": {
-    "adoc": "./bin/adoc.js",
-    "adoc-mcp": "./bin/mcp-server.js"
+    "adoc": "bin/adoc.js",
+    "adoc-mcp": "bin/mcp-server.js"
   },
   "files": [
     "bin/",
-    "src/",
     "dist/",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
@@ -19,23 +19,13 @@
     "test": "node bin/adoc.js --version",
     "prepublishOnly": "npm run build"
   },
-  "keywords": [
-    "documentation",
-    "agent",
-    "ai",
-    "mcp",
-    "vitepress",
-    "feishu",
-    "claude",
-    "cursor"
-  ],
+  "keywords": ["documentation", "agent", "ai", "mcp"],
   "author": "dean YANG",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/deanyes/adoc"
+    "url": "git+https://github.com/deanyes/adoc.git"
   },
-  "homepage": "https://github.com/deanyes/adoc#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1"
   },
