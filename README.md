@@ -278,3 +278,32 @@ Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json
 ## License
 
 MIT © 2026 dean YANG
+
+---
+
+## OpenClaw Skill
+
+ADoc 可以作为 OpenClaw Skill 使用，让任何 Agent 都能维护文档。
+
+### 安装 Skill
+
+```bash
+# 复制到 skills 目录
+mkdir -p ~/.openclaw/skills/adoc
+curl -fsSL https://raw.githubusercontent.com/deanyes/adoc/main/skill/SKILL.md -o ~/.openclaw/skills/adoc/SKILL.md
+curl -fsSL https://raw.githubusercontent.com/deanyes/adoc/main/skill/install.sh -o ~/.openclaw/skills/adoc/install.sh
+chmod +x ~/.openclaw/skills/adoc/install.sh
+
+# 安装 ADoc CLI
+~/.openclaw/skills/adoc/install.sh
+```
+
+### 使用
+
+安装后，对任何 OpenClaw Agent 说：
+
+> "帮我维护产品文档"
+> "把飞书知识库同步到官网"
+> "更新帮助中心，新增了 X 功能"
+
+Agent 会自动使用 ADoc 完成任务。
