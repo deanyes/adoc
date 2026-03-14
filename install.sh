@@ -3,23 +3,31 @@
 
 set -e
 
-echo "🚀 Installing ADoc..."
+INSTALL_DIR="${HOME}/.adoc"
+
+echo "🚀 Installing ADoc to ${INSTALL_DIR}..."
+
+# 清理旧安装
+rm -rf "${INSTALL_DIR}"
 
 # Clone 仓库
-TEMP_DIR=$(mktemp -d)
-git clone --depth 1 https://github.com/deanyes/adoc.git "$TEMP_DIR/adoc"
-cd "$TEMP_DIR/adoc"
+git clone --depth 1 https://github.com/deanyes/adoc.git "${INSTALL_DIR}"
+cd "${INSTALL_DIR}"
 
 # 安装依赖并构建
-npm install
+npm install --production=false
 npm run build
 
-# 全局链接
-npm link
+# 创建全局命令链接
+mkdir -p "${HOME}/.local/bin"
+ln -sf "${INSTALL_DIR}/bin/adoc.js" "${HOME}/.local/bin/adoc"
+ln -sf "${INSTALL_DIR}/bin/mcp-server.js" "${HOME}/.local/bin/adoc-mcp"
+chmod +x "${INSTALL_DIR}/bin/adoc.js" "${INSTALL_DIR}/bin/mcp-server.js"
 
 echo ""
 echo "✅ ADoc installed successfully!"
-echo "   Run 'adoc --help' to get started."
-
-# 清理
-rm -rf "$TEMP_DIR"
+echo ""
+echo "Add ~/.local/bin to PATH if not already:"
+echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+echo ""
+echo "Then run: adoc --help"
