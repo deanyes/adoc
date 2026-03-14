@@ -4,11 +4,13 @@
   "description": "Agent-first documentation tool. Let AI agents create and maintain docs.",
   "type": "module",
   "bin": {
-    "adoc": "./bin/adoc.js"
+    "adoc": "./bin/adoc.js",
+    "adoc-mcp": "./bin/mcp-server.js"
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc -w"
+    "dev": "tsc -w",
+    "test": "node bin/adoc.js --version"
   },
   "keywords": [
     "documentation",
@@ -16,15 +18,19 @@
     "ai",
     "mcp",
     "vitepress",
-    "feishu"
+    "feishu",
+    "claude"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ADocHQ/adoc"
+    "url": "https://github.com/deanyes/adoc"
   },
   "dependencies": {
-    "@types/node": "^25.5.0",
-    "typescript": "^5.9.3"
+    "@modelcontextprotocol/sdk": "^1.27.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   }
 }
