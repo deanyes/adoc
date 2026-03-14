@@ -107,17 +107,32 @@ export async function importFeishu(args: string[]) {
       content = `# ${node.title}\n\n*Content could not be imported.*`;
     }
     
+    // 提取 description（正文第一段）并从正文中移除
+    let description = '';
+    let bodyContent = content;
+    const trimmed = content.trimStart();
+    if (trimmed) {
+      // 找到第一个非空段落作为 description
+      const paragraphs = trimmed.split(/\n\n+/);
+      const firstPara = paragraphs[0]?.trim();
+      if (firstPara && !firstPara.startsWith('#')) {
+        description = firstPara;
+        bodyContent = paragraphs.slice(1).join('\n\n').trimStart();
+      }
+    }
+
     // 生成 frontmatter
     const frontmatter = [
       '---',
       `title: "${node.title}"`,
+      description ? `description: "${description.replace(/"/g, '\\"')}"` : null,
       parentSlug ? `category: "${parentSlug}"` : null,
       `order: ${order}`,
       `lastUpdated: ${new Date().toISOString()}`,
       '---'
     ].filter(Boolean).join('\n');
-    
-    const fullContent = frontmatter + '\n\n' + content;
+
+    const fullContent = frontmatter + '\n\n' + `# ${node.title}` + '\n\n' + bodyContent;
     fs.writeFileSync(fullPath, fullContent);
     
     const docInfo: DocInfo = {
