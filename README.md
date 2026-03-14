@@ -161,6 +161,8 @@ adoc deploy github-pages
 | `adoc list` | 列出所有文档 |
 | `adoc delete <id>` | 删除文档 |
 | `adoc search <query>` | 搜索文档 |
+| `adoc index` | 重建索引 |
+| `adoc list --tree` | 树形显示 |
 | `adoc import feishu <id>` | 从飞书导入 |
 | `adoc sync` | 同步更新 |
 | `adoc build` | 构建静态站点 |
