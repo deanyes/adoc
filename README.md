@@ -1,6 +1,18 @@
 # ADoc
 
+[![npm version](https://badge.fury.io/js/adoc-agent.svg)](https://www.npmjs.com/package/adoc-agent)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 **Agent-first documentation tool.** Let AI agents create, maintain, and publish documentation.
+
+## Why ADoc?
+
+Traditional docs tools are designed for humans. ADoc is designed for **AI agents**:
+
+- **Structured data model** - Frontmatter + Markdown, easy for agents to parse and generate
+- **MCP integration** - Works with Claude, Cursor, and any MCP-compatible AI
+- **Import sources** - Feishu, Notion (coming soon), and more
+- **One-click deploy** - GitHub Pages out of the box
 
 ## Install
 
@@ -15,7 +27,7 @@ npm install -g adoc-agent
 adoc init my-docs
 cd my-docs
 
-# Import from Feishu
+# Import from Feishu wiki
 adoc import feishu <space-id>
 
 # Build & preview
@@ -39,7 +51,7 @@ adoc deploy github-pages
 | `adoc search <query>` | Search documents |
 | `adoc import feishu <space-id>` | Import from Feishu wiki |
 | `adoc sync` | Sync changes from source |
-| `adoc build` | Build static site |
+| `adoc build` | Build static site (VitePress) |
 | `adoc preview` | Preview locally |
 | `adoc deploy [target]` | Deploy (github-pages) |
 | `adoc status` | Show project status |
@@ -52,21 +64,31 @@ For Claude Desktop or Cursor, add to your MCP config:
 {
   "mcpServers": {
     "adoc": {
-      "command": "adoc-mcp",
-      "args": []
+      "command": "npx",
+      "args": ["-y", "adoc-agent", "mcp"]
     }
   }
 }
 ```
 
-## Use Case
+Available MCP tools:
+- `adoc_list` - List all documents
+- `adoc_get` - Get document content
+- `adoc_create` - Create new document
+- `adoc_update` - Update document
+- `adoc_delete` - Delete document
+- `adoc_search` - Search documents
+- `adoc_build` - Build static site
+- `adoc_deploy` - Deploy to hosting
+
+## Workflow
 
 ```
-Human provides info → Agent handles writing, formatting, publishing
+Human provides info → ADoc Agent writes → Preview → Deploy
 ```
 
-ADoc is designed for AI agents to maintain documentation autonomously.
+No more manual doc maintenance. Just tell your AI what changed.
 
 ## License
 
-MIT
+MIT © 2026 dean YANG
