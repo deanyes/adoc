@@ -32,7 +32,7 @@
   "title": "我的文档",
   "import": {
     "feishu": {
-      "appId": "cli_a90345f867f8dbd8",
+      "appId": "cli_your_app_id",
       "appSecret": "your-app-secret"
     }
   }
