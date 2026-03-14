@@ -136,9 +136,13 @@ export async function update(args: string[]) {
 
   if (stdinFlag) {
     const stdinContent = fs.readFileSync(0, 'utf-8');
-    const fmEnd = content.indexOf('---', 4);
-    const frontmatter = fmEnd > -1 ? content.slice(0, fmEnd + 3) : '';
-    content = frontmatter + '\n\n' + stdinContent;
+    if (appendIdx > -1) {
+      content = content + '\n\n' + stdinContent;
+    } else {
+      const fmEnd = content.indexOf('---', 4);
+      const frontmatter = fmEnd > -1 ? content.slice(0, fmEnd + 3) : '';
+      content = frontmatter + '\n\n' + stdinContent;
+    }
   } else if (contentIdx > -1) {
     // 替换内容（保留 frontmatter）
     const fmEnd = content.indexOf('---', 4);
