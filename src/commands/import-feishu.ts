@@ -5,10 +5,13 @@ import { loadConfig } from '../utils/config.js';
 
 interface DocInfo {
   id: string;
+  slug: string;
   title: string;
   path: string;
   category?: string;
+  parentSlug?: string;
   images: string[];
+  order: number;
 }
 
 export async function importFeishu(args: string[]) {
@@ -52,23 +55,21 @@ export async function importFeishu(args: string[]) {
   
   // 导入所有文档
   const docInfos: DocInfo[] = [];
-  const sidebarGroups: Record<string, any[]> = {};
+  let order = 0;
   
-  for (const node of allNodes) {
+  // 递归处理节点
+  async function processNode(node: WikiNode, parentSlug?: string): Promise<void> {
     if (node.obj_type !== 'docx') {
       console.log(`  Skipping non-docx: ${node.title}`);
-      continue;
+      return;
     }
     
     console.log(`📄 ${node.title}`);
+    order++;
     
-    // 确定目录路径
-    const pathParts = getNodePath(node, nodeMap);
-    const category = pathParts.length > 1 ? pathParts[0] : '';
-    
-    // 生成 slug
+    // 生成 slug 和路径
     const slug = slugify(node.title);
-    const subDir = category ? slugify(category) : '';
+    const subDir = parentSlug || '';
     const docPath = subDir ? `${subDir}/${slug}.md` : `${slug}.md`;
     const fullPath = path.join(docsDir, docPath);
     
@@ -110,7 +111,8 @@ export async function importFeishu(args: string[]) {
     const frontmatter = [
       '---',
       `title: "${node.title}"`,
-      category ? `category: "${category}"` : null,
+      parentSlug ? `category: "${parentSlug}"` : null,
+      `order: ${order}`,
       `lastUpdated: ${new Date().toISOString()}`,
       '---'
     ].filter(Boolean).join('\n');
@@ -118,29 +120,36 @@ export async function importFeishu(args: string[]) {
     const fullContent = frontmatter + '\n\n' + content;
     fs.writeFileSync(fullPath, fullContent);
     
-    docInfos.push({
-      id: slug,
+    const docInfo: DocInfo = {
+      id: node.node_token,
+      slug,
       title: node.title,
       path: docPath,
-      category,
-      images
-    });
+      category: parentSlug,
+      parentSlug,
+      images,
+      order
+    };
+    docInfos.push(docInfo);
     
-    // 构建 sidebar
-    const groupKey = category || '开始';
-    if (!sidebarGroups[groupKey]) {
-      sidebarGroups[groupKey] = [];
+    // 处理子节点
+    if (node.children && node.children.length > 0) {
+      for (const child of node.children) {
+        await processNode(child, slug);
+      }
     }
-    sidebarGroups[groupKey].push({
-      text: node.title,
-      link: '/' + docPath.replace('.md', '')
-    });
     
     await sleep(500);
   }
   
+  // 处理根节点
+  const rootNodes = allNodes.filter(n => !n.parent_node_token);
+  for (const node of rootNodes) {
+    await processNode(node);
+  }
+  
   // 生成 VitePress 配置
-  generateVitePressConfig(docsDir, sidebarGroups, config);
+  generateVitePressConfig(docsDir, docInfos, config);
   
   // 更新索引
   updateIndex(docInfos);
@@ -155,23 +164,6 @@ export async function importFeishu(args: string[]) {
   console.log(`   adoc preview`);
 }
 
-function getNodePath(node: WikiNode, nodeMap: Map<string, WikiNode>): string[] {
-  const path: string[] = [node.title];
-  let current = node;
-  
-  while (current.parent_node_token) {
-    const parent = nodeMap.get(current.parent_node_token);
-    if (parent) {
-      path.unshift(parent.title);
-      current = parent;
-    } else {
-      break;
-    }
-  }
-  
-  return path;
-}
-
 function slugify(title: string): string {
   return title
     .toLowerCase()
@@ -180,17 +172,73 @@ function slugify(title: string): string {
     .slice(0, 50) || 'untitled';
 }
 
-function generateVitePressConfig(docsDir: string, groups: Record<string, any[]>, config: any): void {
+function generateVitePressConfig(docsDir: string, docs: DocInfo[], config: any): void {
   const vitepressDir = path.join(docsDir, '.vitepress');
   fs.mkdirSync(vitepressDir, { recursive: true });
   
   const base = config.deploy?.base || '/';
   
-  const sidebar = Object.entries(groups).map(([text, items]) => ({
-    text,
-    collapsed: false,
-    items
-  }));
+  // 构建 sidebar 结构
+  const sidebar: any[] = [];
+  const groups = new Map<string, any[]>();
+  
+  // 分组
+  for (const doc of docs) {
+    if (doc.parentSlug) {
+      // 子文档
+      if (!groups.has(doc.parentSlug)) {
+        groups.set(doc.parentSlug, []);
+      }
+      groups.get(doc.parentSlug)!.push({
+        text: doc.title,
+        link: '/' + doc.path.replace('.md', '')
+      });
+    } else {
+      // 根文档
+      const item: any = {
+        text: doc.title,
+        link: '/' + doc.path.replace('.md', '')
+      };
+      
+      // 检查是否有子文档
+      const children = groups.get(doc.slug);
+      if (children && children.length > 0) {
+        item.items = children;
+        item.collapsed = true;
+      }
+      
+      sidebar.push(item);
+    }
+  }
+  
+  // 对于有子文档的组，重新构建
+  const finalSidebar: any[] = [];
+  const processedGroups = new Set<string>();
+  
+  for (const doc of docs) {
+    if (doc.parentSlug) continue;
+    
+    const children = docs.filter(d => d.parentSlug === doc.slug);
+    
+    if (children.length > 0) {
+      finalSidebar.push({
+        text: doc.title,
+        collapsed: false,
+        items: [
+          { text: '概览', link: '/' + doc.path.replace('.md', '') },
+          ...children.map(c => ({
+            text: c.title,
+            link: '/' + c.path.replace('.md', '')
+          }))
+        ]
+      });
+    } else {
+      finalSidebar.push({
+        text: doc.title,
+        link: '/' + doc.path.replace('.md', '')
+      });
+    }
+  }
   
   const configContent = `
 import { defineConfig } from 'vitepress'
@@ -211,7 +259,7 @@ export default defineConfig({
       { text: '首页', link: '/' }
     ],
     
-    sidebar: ${JSON.stringify(sidebar, null, 6)},
+    sidebar: ${JSON.stringify(finalSidebar, null, 6)},
     
     search: {
       provider: 'local'
@@ -236,11 +284,12 @@ function updateIndex(docInfos: DocInfo[]): void {
   };
   
   for (const doc of docInfos) {
-    index.documents[doc.id] = {
+    index.documents[doc.slug] = {
       path: `docs/${doc.path}`,
       title: doc.title,
       category: doc.category,
       images: doc.images,
+      order: doc.order,
       hash: Date.now().toString(16),
       updatedAt: new Date().toISOString()
     };
