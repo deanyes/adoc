@@ -1,0 +1,8 @@
+src/
+tsconfig.json
+.git
+.gitignore
+docs/
+examples/
+*.md
+!README.md
