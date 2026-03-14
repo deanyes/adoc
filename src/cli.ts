@@ -4,6 +4,7 @@ import { deploy } from './commands/deploy.js';
 import { init } from './commands/init.js';
 import { preview } from './commands/preview.js';
 import { sync } from './commands/sync.js';
+import { status } from './commands/status.js';
 import { create, update, get, list, deleteDoc, search } from './commands/docs.js';
 
 const HELP = `
@@ -13,17 +14,18 @@ Usage: adoc <command> [options]
 
 Commands:
   init [name]              Initialize a new ADoc project
+  status                   Show project status
   
   # Document CRUD
   create <title>           Create a new document
-  update <id>              Update a document
+  update <id>              Update a document  
   get <id>                 Get document content
   list                     List all documents
   delete <id>              Delete a document
   search <query>           Search documents
   
   # Import & Sync
-  import feishu <url>      Import from Feishu wiki
+  import feishu <space-id> Import from Feishu wiki
   sync                     Sync changes from source
   
   # Build & Deploy
@@ -34,13 +36,6 @@ Commands:
 Options:
   -h, --help               Show help
   -v, --version            Show version
-
-Examples:
-  adoc init my-docs
-  adoc import feishu 7434170131409928194
-  adoc sync
-  adoc build
-  adoc deploy github-pages
 `;
 
 export async function main(args: string[]) {
@@ -60,6 +55,9 @@ export async function main(args: string[]) {
     switch (cmd) {
       case 'init':
         await init(args.slice(1));
+        break;
+      case 'status':
+        await status(args.slice(1));
         break;
       case 'create':
         await create(args.slice(1));
