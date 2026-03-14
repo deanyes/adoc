@@ -15,6 +15,14 @@ interface LockFile {
   lastSync?: string;
 }
 
+function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[\s]+/g, '-')
+    .replace(/[^\w\-\u4e00-\u9fa5]/g, '')
+    .slice(0, 50) || 'untitled';
+}
+
 export async function sync(args: string[]) {
   const config = loadConfig();
   const lockPath = path.resolve('adoc.lock.json');
@@ -24,7 +32,13 @@ export async function sync(args: string[]) {
     process.exit(1);
   }
   
-  const lock: LockFile = JSON.parse(fs.readFileSync(lockPath, 'utf-8'));
+  let lock: LockFile;
+  try {
+    lock = JSON.parse(fs.readFileSync(lockPath, 'utf-8'));
+  } catch {
+    console.error('Failed to parse adoc.lock.json. The file may be corrupted.');
+    process.exit(1);
+  }
   
   const appId = config.import?.feishu?.appId;
   const appSecret = config.import?.feishu?.appSecret;
@@ -44,14 +58,14 @@ export async function sync(args: string[]) {
   const allNodes = await client.getAllNodes(spaceId);
   console.log(`Found ${allNodes.length} documents in Feishu\n`);
   
-  // 检查变化
+  // 检查变化 — 使用 slug 作为 key（与 import-feishu 一致）
   const existingDocs = new Set(Object.keys(lock.documents));
-  const feishuDocs = new Set(allNodes.map(n => n.node_token));
-  
+  const feishuSlugs = new Set(allNodes.map(n => slugify(n.title)));
+
   // 新增文档
-  const newDocs = allNodes.filter(n => !existingDocs.has(n.node_token));
+  const newDocs = allNodes.filter(n => !existingDocs.has(slugify(n.title)));
   // 删除的文档
-  const deletedDocs = [...existingDocs].filter(id => !feishuDocs.has(id));
+  const deletedDocs = [...existingDocs].filter(slug => !feishuSlugs.has(slug));
   
   console.log(`New documents: ${newDocs.length}`);
   console.log(`Deleted documents: ${deletedDocs.length}`);

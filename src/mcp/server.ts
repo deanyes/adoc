@@ -10,7 +10,10 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { execSync } from 'child_process';
+import { create, update, get, list, deleteDoc, search } from '../commands/docs.js';
+import { importFeishu } from '../commands/import-feishu.js';
+import { build } from '../commands/build.js';
+import { deploy } from '../commands/deploy.js';
 
 const server = new Server(
   {
@@ -136,63 +139,71 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const a = args as Record<string, string> || {};
   
   try {
-    let result: string;
-    
-    switch (name) {
-      case 'adoc_list':
-        result = execSync(`adoc list ${a.category ? `--category "${a.category}"` : ''} --json`, { encoding: 'utf-8' });
-        break;
-        
-      case 'adoc_get':
-        result = execSync(`adoc get "${a.id}"`, { encoding: 'utf-8' });
-        break;
-        
-      case 'adoc_create':
-        const createContent = (a.content || '').replace(/"/g, '\\"');
-        result = execSync(`adoc create "${a.title}" --content "${createContent}" ${a.category ? `--category "${a.category}"` : ''}`, { encoding: 'utf-8' });
-        break;
-        
-      case 'adoc_update':
-        if (a.content) {
-          const updateContent = a.content.replace(/"/g, '\\"');
-          result = execSync(`adoc update "${a.id}" --content "${updateContent}"`, { encoding: 'utf-8' });
-        } else if (a.append) {
-          const appendContent = a.append.replace(/"/g, '\\"');
-          result = execSync(`adoc update "${a.id}" --append "${appendContent}"`, { encoding: 'utf-8' });
-        } else {
-          result = 'No content or append provided';
+    // Capture stdout by temporarily redirecting console.log
+    let output = '';
+    const originalLog = console.log;
+    console.log = (...args: any[]) => { output += args.join(' ') + '\n'; };
+
+    try {
+      switch (name) {
+        case 'adoc_list': {
+          const listArgs: string[] = [];
+          if (a.category) { listArgs.push('--category', a.category); }
+          listArgs.push('--json');
+          await list(listArgs);
+          break;
         }
-        break;
-        
-      case 'adoc_delete':
-        result = execSync(`adoc delete "${a.id}" --force`, { encoding: 'utf-8' });
-        break;
-        
-      case 'adoc_search':
-        result = execSync(`adoc search "${a.query}"`, { encoding: 'utf-8' });
-        break;
-        
-      case 'adoc_import_feishu':
-        result = execSync(`adoc import feishu "${a.spaceId}"`, { encoding: 'utf-8' });
-        break;
-        
-      case 'adoc_build':
-        result = execSync('adoc build', { encoding: 'utf-8' });
-        break;
-        
-      case 'adoc_deploy':
-        result = execSync(`adoc deploy ${a.target || 'github-pages'}`, { encoding: 'utf-8' });
-        break;
-        
-      default:
-        return {
-          content: [{ type: 'text', text: `Unknown tool: ${name}` }],
-          isError: true,
-        };
+        case 'adoc_get':
+          await get([a.id]);
+          break;
+
+        case 'adoc_create': {
+          const createArgs = [a.title];
+          if (a.content) { createArgs.push('--content', a.content); }
+          if (a.category) { createArgs.push('--category', a.category); }
+          await create(createArgs);
+          break;
+        }
+        case 'adoc_update': {
+          const updateArgs = [a.id];
+          if (a.content) { updateArgs.push('--content', a.content); }
+          else if (a.append) { updateArgs.push('--append', a.append); }
+          await update(updateArgs);
+          break;
+        }
+        case 'adoc_delete':
+          await deleteDoc([a.id, '--force']);
+          break;
+
+        case 'adoc_search':
+          await search([a.query]);
+          break;
+
+        case 'adoc_import_feishu':
+          await importFeishu([a.spaceId]);
+          break;
+
+        case 'adoc_build':
+          await build([]);
+          break;
+
+        case 'adoc_deploy':
+          await deploy([a.target || 'github-pages']);
+          break;
+
+        default:
+          console.log = originalLog;
+          return {
+            content: [{ type: 'text', text: `Unknown tool: ${name}` }],
+            isError: true,
+          };
+      }
+    } finally {
+      console.log = originalLog;
     }
-    
+
     return {
-      content: [{ type: 'text', text: result }],
+      content: [{ type: 'text', text: output || 'Done' }],
     };
   } catch (error: any) {
     return {

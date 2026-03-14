@@ -18,7 +18,11 @@ interface DocIndex {
 function loadIndex(): DocIndex {
   const lockPath = path.resolve(LOCK_FILE);
   if (fs.existsSync(lockPath)) {
-    return JSON.parse(fs.readFileSync(lockPath, 'utf-8'));
+    try {
+      return JSON.parse(fs.readFileSync(lockPath, 'utf-8'));
+    } catch {
+      console.error('Failed to parse adoc.lock.json. The file may be corrupted.');
+    }
   }
   return { version: 1, documents: {} };
 }

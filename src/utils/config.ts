@@ -38,7 +38,12 @@ export function loadConfig(): ADocConfig {
     process.exit(1);
   }
   
-  return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  try {
+    return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  } catch {
+    console.error('Failed to parse adoc.config.json. Please check the file format.');
+    process.exit(1);
+  }
 }
 
 export function saveConfig(config: ADocConfig): void {
