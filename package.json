@@ -1,0 +1,30 @@
+{
+  "name": "adoc",
+  "version": "0.1.0",
+  "description": "Agent-first documentation tool. Let AI agents create and maintain docs.",
+  "type": "module",
+  "bin": {
+    "adoc": "./bin/adoc.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w"
+  },
+  "keywords": [
+    "documentation",
+    "agent",
+    "ai",
+    "mcp",
+    "vitepress",
+    "feishu"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ADocHQ/adoc"
+  },
+  "dependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3"
+  }
+}
