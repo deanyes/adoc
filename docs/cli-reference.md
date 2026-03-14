@@ -2,51 +2,141 @@
 
 ## 项目管理
 
-### `adoc init [name]`
-初始化新的 ADoc 项目。
+### adoc init [name]
 
-### `adoc status`
-显示项目状态（文档数、图片数、配置等）。
+初始化新项目。
+
+```bash
+adoc init my-docs
+```
+
+创建 `adoc.config.json` 和 `docs/` 目录。
+
+### adoc status
+
+显示项目状态。
+
+```bash
+adoc status
+```
+
+输出：
+```
+📊 ADoc Project Status
+
+Project: my-docs
+Title:   My Documentation
+
+Documents: 15
+Images:    42
+Built:     2026-03-14 23:00
+
+Configuration:
+  Feishu: ✅ Configured
+  Deploy: github-pages
+```
 
 ## 文档操作
 
-### `adoc create <title>`
+### adoc create \<title\>
+
 创建新文档。
 
-### `adoc update <id>`
-更新已有文档。
+```bash
+adoc create "API 文档"
+```
 
-### `adoc get <id>`
+### adoc update \<id\>
+
+更新文档（打开编辑器）。
+
+```bash
+adoc update api-docs
+```
+
+### adoc get \<id\>
+
 获取文档内容。
 
-### `adoc list`
+```bash
+adoc get api-docs
+```
+
+### adoc list
+
 列出所有文档。
 
-### `adoc delete <id>`
+```bash
+adoc list
+```
+
+### adoc delete \<id\>
+
 删除文档。
 
-### `adoc search <query>`
+```bash
+adoc delete api-docs
+```
+
+### adoc search \<query\>
+
 搜索文档。
+
+```bash
+adoc search "API"
+```
 
 ## 导入同步
 
-### `adoc import feishu <space-id>`
-从飞书知识空间导入文档。
-- 递归获取所有子文档
-- 自动下载图片
-- 生成 VitePress 配置
+### adoc import feishu \<space-id\>
 
-### `adoc sync`
-检查源文档更新并同步。
+从飞书知识空间导入。
+
+```bash
+adoc import feishu 7434170131409928194
+```
+
+功能：
+- 递归获取所有子文档
+- 自动下载图片到本地
+- 生成 VitePress 配置
+- 保持文档层级结构
+
+### adoc sync
+
+检查并同步源文档更新。
+
+```bash
+adoc sync
+```
 
 ## 构建部署
 
-### `adoc build`
-构建静态站点（VitePress）。
+### adoc build
 
-### `adoc preview`
-启动本地预览服务器。
+构建静态站点。
 
-### `adoc deploy [target]`
+```bash
+adoc build
+```
+
+使用 VitePress 构建到 `docs/.vitepress/dist/`。
+
+### adoc preview
+
+本地预览。
+
+```bash
+adoc preview
+adoc preview --port=3000
+```
+
+### adoc deploy [target]
+
 部署到托管平台。
-- `github-pages` - GitHub Pages（默认）
+
+```bash
+adoc deploy                  # 默认 github-pages
+adoc deploy github-pages
+adoc deploy vercel           # 计划中
+```
