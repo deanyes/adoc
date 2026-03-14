@@ -1,50 +1,24 @@
 # ADoc
 
-> Agent-first documentation tool. Let AI agents create and maintain docs.
+**Agent-first documentation tool.** Let AI agents create, maintain, and publish documentation.
 
-[![npm version](https://badge.fury.io/js/adoc.svg)](https://www.npmjs.com/package/adoc)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-## Why ADoc?
-
-Traditional docs workflow:
-```
-Human writes → Human formats → Human uploads images → Human publishes
-             ↓ (repeat for every update)
-```
-
-ADoc workflow:
-```
-Human provides info → Agent handles everything → Docs published
-```
-
-**ADoc is not another static site generator. It's a tool for AI agents to manage documentation.**
-
-## Features
-
-- 🤖 **Agent-first** - CLI + MCP Server for any AI agent
-- 📥 **Multi-source import** - Feishu (Notion coming soon)
-- 🎨 **Auto formatting** - AI-optimized structure and metadata
-- 🚀 **One-click deploy** - GitHub Pages, Vercel
-
-## Installation
+## Install
 
 ```bash
-npm install -g adoc
+npm install -g adoc-agent
 ```
 
 ## Quick Start
 
 ```bash
-# Initialize a new project
+# Initialize a new doc project
 adoc init my-docs
 cd my-docs
 
-# Configure Feishu credentials in adoc.config.json
-# Then import from Feishu wiki
+# Import from Feishu
 adoc import feishu <space-id>
 
-# Build and preview
+# Build & preview
 adoc build
 adoc preview
 
@@ -54,83 +28,45 @@ adoc deploy github-pages
 
 ## CLI Commands
 
-```bash
-# Project
-adoc init [name]              # Initialize project
+| Command | Description |
+|---------|-------------|
+| `adoc init [name]` | Initialize new project |
+| `adoc create <title>` | Create a document |
+| `adoc update <id>` | Update a document |
+| `adoc get <id>` | Get document content |
+| `adoc list` | List all documents |
+| `adoc delete <id>` | Delete a document |
+| `adoc search <query>` | Search documents |
+| `adoc import feishu <space-id>` | Import from Feishu wiki |
+| `adoc sync` | Sync changes from source |
+| `adoc build` | Build static site |
+| `adoc preview` | Preview locally |
+| `adoc deploy [target]` | Deploy (github-pages) |
+| `adoc status` | Show project status |
 
-# Document CRUD
-adoc create <title>           # Create document
-adoc update <id>              # Update document
-adoc get <id>                 # Get document
-adoc list                     # List documents
-adoc delete <id>              # Delete document
-adoc search <query>           # Search documents
+## MCP Server
 
-# Import
-adoc import feishu <space-id> # Import from Feishu
-
-# Build & Deploy
-adoc build                    # Build static site
-adoc preview                  # Local preview
-adoc deploy [target]          # Deploy (github-pages, vercel)
-```
-
-## For AI Agents (MCP)
-
-ADoc provides an MCP Server for Claude, Cursor, and other AI tools:
+For Claude Desktop or Cursor, add to your MCP config:
 
 ```json
-// claude_desktop_config.json
 {
   "mcpServers": {
     "adoc": {
       "command": "adoc-mcp",
-      "env": {
-        "ADOC_PROJECT": "/path/to/your-docs"
-      }
+      "args": []
     }
   }
 }
 ```
 
-Available MCP tools:
-- `adoc_list` - List documents
-- `adoc_get` - Get document content
-- `adoc_create` - Create document
-- `adoc_update` - Update document
-- `adoc_delete` - Delete document
-- `adoc_search` - Search documents
-- `adoc_import_feishu` - Import from Feishu
-- `adoc_build` - Build site
-- `adoc_deploy` - Deploy site
+## Use Case
 
-## Configuration
-
-```json
-// adoc.config.json
-{
-  "name": "my-docs",
-  "title": "My Documentation",
-  "description": "...",
-  "import": {
-    "feishu": {
-      "appId": "cli_xxx",
-      "appSecret": "xxx"
-    }
-  },
-  "deploy": {
-    "target": "github-pages",
-    "repo": "https://github.com/user/repo.git",
-    "base": "/repo/"
-  }
-}
 ```
+Human provides info → Agent handles writing, formatting, publishing
+```
+
+ADoc is designed for AI agents to maintain documentation autonomously.
 
 ## License
 
 MIT
-
-## Links
-
-- [GitHub](https://github.com/deanyes/adoc)
-- [Design Doc](https://github.com/deanyes/adoc/blob/main/docs/DESIGN.md)
