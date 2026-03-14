@@ -48,7 +48,8 @@ export async function main(args: string[]) {
   }
   
   if (cmd === '-v' || cmd === '--version') {
-    console.log('0.1.0');
+    const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
+    console.log(pkg.version);
     return;
   }
   
