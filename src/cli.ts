@@ -1,3 +1,5 @@
+import fs from "fs";
+
 import { importFeishu } from './commands/import-feishu.js';
 import { build } from './commands/build.js';
 import { deploy } from './commands/deploy.js';
