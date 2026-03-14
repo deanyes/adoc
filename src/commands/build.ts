@@ -5,52 +5,76 @@ import { loadConfig } from '../utils/config.js';
 
 export async function build(args: string[]) {
   const config = loadConfig();
+  const projectRoot = path.resolve('.');
   const docsDir = path.resolve('docs');
   
-  console.log('Building documentation site...');
+  console.log('\n🔨 Building documentation site...\n');
+  
+  // 检查 docs 目录
+  if (!fs.existsSync(docsDir)) {
+    console.error('Error: docs/ directory not found');
+    console.error('Run `adoc import feishu <space-id>` first');
+    process.exit(1);
+  }
   
   // 检查 VitePress 配置
   const vitepressDir = path.join(docsDir, '.vitepress');
-  if (!fs.existsSync(vitepressDir)) {
-    console.log('Initializing VitePress...');
-    fs.mkdirSync(vitepressDir, { recursive: true });
-    
-    // 生成 VitePress 配置
-    const vitepressConfig = generateVitePressConfig(config);
-    fs.writeFileSync(path.join(vitepressDir, 'config.mts'), vitepressConfig);
+  if (!fs.existsSync(path.join(vitepressDir, 'config.mts'))) {
+    console.log('Generating VitePress config...');
+    generateDefaultConfig(docsDir, config);
   }
   
-  // 安装依赖并构建
-  const projectRoot = path.resolve('.');
+  // 确保有 index.md
+  const indexPath = path.join(docsDir, 'index.md');
+  if (!fs.existsSync(indexPath)) {
+    console.log('Creating index.md...');
+    createDefaultIndex(indexPath, config);
+  }
+  
+  // 安装 VitePress
+  const packageJson = path.join(projectRoot, 'package.json');
+  if (!fs.existsSync(packageJson)) {
+    console.log('Initializing npm project...');
+    execSync('npm init -y', { cwd: projectRoot, stdio: 'pipe' });
+  }
+  
   if (!fs.existsSync(path.join(projectRoot, 'node_modules/vitepress'))) {
     console.log('Installing VitePress...');
     execSync('npm install -D vitepress', { cwd: projectRoot, stdio: 'inherit' });
   }
   
-  console.log('Building...');
+  // 构建
+  console.log('\nBuilding...');
   execSync('npx vitepress build docs', { cwd: projectRoot, stdio: 'inherit' });
   
-  console.log('✅ Build complete: docs/.vitepress/dist');
+  const distDir = path.join(vitepressDir, 'dist');
+  console.log(`\n✅ Build complete!`);
+  console.log(`   Output: ${distDir}`);
+  console.log(`\nNext steps:`);
+  console.log(`   adoc preview    # Preview locally`);
+  console.log(`   adoc deploy     # Deploy to hosting`);
 }
 
-function generateVitePressConfig(config: any): string {
-  return `
+function generateDefaultConfig(docsDir: string, config: any): void {
+  const vitepressDir = path.join(docsDir, '.vitepress');
+  fs.mkdirSync(vitepressDir, { recursive: true });
+  
+  const base = config.deploy?.base || '/';
+  
+  const configContent = `
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: '${config.title || 'Documentation'}',
   description: '${config.description || ''}',
+  base: '${base}',
   
   themeConfig: {
     nav: [
-      { text: 'Home', link: '/' }
+      { text: '首页', link: '/' }
     ],
     
     sidebar: 'auto',
-    
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com' }
-    ],
     
     search: {
       provider: 'local'
@@ -58,4 +82,24 @@ export default defineConfig({
   }
 })
 `;
+  
+  fs.writeFileSync(path.join(vitepressDir, 'config.mts'), configContent);
+}
+
+function createDefaultIndex(indexPath: string, config: any): void {
+  const content = `---
+layout: home
+title: ${config.title || 'Documentation'}
+
+hero:
+  name: ${config.title || 'Documentation'}
+  text: ${config.description || ''}
+  actions:
+    - theme: brand
+      text: 开始阅读
+      link: /guide/
+---
+`;
+  
+  fs.writeFileSync(indexPath, content);
 }
