@@ -57,6 +57,7 @@ export async function importFeishu(args: string[]) {
   // 导入所有文档
   const docInfos: DocInfo[] = [];
   let order = 0;
+  let totalFailedImages = 0;
   
   // 递归处理节点
   async function processNode(node: WikiNode, parentSlug?: string): Promise<void> {
@@ -104,8 +105,9 @@ export async function importFeishu(args: string[]) {
           if (success) {
             images.push(token);
           } else {
-            console.log(`   ⚠️  Image download failed (permission denied)`);
+            console.log(`   ⚠️  图片下载失败（权限不足）`);
             failedImages.push(token);
+            totalFailedImages++;
           }
           
           await sleep(1000);
@@ -186,24 +188,28 @@ export async function importFeishu(args: string[]) {
   updateIndex(docInfos);
   
   const totalImages = docInfos.reduce((sum, d) => sum + d.images.length, 0);
-  const totalFailedImages = docInfos.reduce((sum, d) => {
-    const doc = docInfos.find(dd => dd.id === d.id);
-    return sum;
-  }, 0);
-  
+
   console.log(`\n✅ Import complete!`);
   console.log(`   Documents: ${docInfos.length}`);
   console.log(`   Images: ${totalImages}`);
-  
+  if (totalFailedImages > 0) {
+    console.log(`   Failed: ${totalFailedImages} image(s)`);
+  }
+
   // 检查是否有图片下载失败
-  const hasFailedImages = totalImages === 0 && docInfos.length > 0;
-  if (hasFailedImages) {
-    console.log(`\n⚠️  Image download may have failed due to permission issues.`);
-    console.log(`   To fix this, add the following permission to your Feishu app:`);
-    console.log(`   - drive:drive:readonly (云文档-读取文档)`);
-    console.log(`   or`);
-    console.log(`   - wiki:wiki:readonly (知识库-获取知识库信息)`);
-    console.log(`\n   Note: Images that failed to download have been removed from the documents.`);
+  if (totalFailedImages > 0) {
+    console.log(`\n⚠️  图片下载失败（权限不足）`);
+    console.log(`\n解决方法：将飞书应用添加为知识库成员\n`);
+    console.log(`操作步骤：`);
+    console.log(`  1. 打开飞书知识库页面`);
+    console.log(`  2. 点击右上角「设置」→「成员管理」`);
+    console.log(`  3. 点击「添加成员」`);
+    console.log(`  4. 选择「应用」标签`);
+    console.log(`  5. 搜索并选择你的飞书应用（App ID: ${appId}）`);
+    console.log(`  6. 设置权限为「可阅读」`);
+    console.log(`  7. 重新运行 adoc import feishu ${spaceId}\n`);
+    console.log(`详细文档：https://deanyes.github.io/adoc/feishu-import.html`);
+    console.log(`\n注意：下载失败的图片已从文档中移除，不影响构建。`);
   }
   
   console.log(`\nNext steps:`);
