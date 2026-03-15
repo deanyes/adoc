@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as n,ae as p}from"./chunks/framework.ClxVAuN8.js";const E=JSON.parse('{"title":"ADoc 产品设计方案","description":"","frontmatter":{},"headers":[],"relativePath":"DESIGN.md","filePath":"DESIGN.md"}'),l={name:"DESIGN.md"};function t(h,s,k,e,d,r){return a(),n("div",null,[...s[0]||(s[0]=[p("",108)])])}const F=i(l,[["render",t]]);export{E as __pageData,F as default};
