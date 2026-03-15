@@ -78,6 +78,7 @@ export async function importFeishu(args: string[]) {
     // 获取文档内容
     let content = '';
     const images: string[] = [];
+    const failedImages: string[] = [];
     
     try {
       content = await client.getDocumentContent(node.obj_token);
@@ -94,13 +95,19 @@ export async function importFeishu(args: string[]) {
           if (success) {
             images.push(token);
           } else {
-            console.log(`   ⚠️  Image download failed`);
+            console.log(`   ⚠️  Image download failed (permission denied)`);
+            failedImages.push(token);
           }
           
           await sleep(1000);
         } else {
           images.push(token);
         }
+      }
+      
+      // 移除下载失败的图片引用
+      for (const token of failedImages) {
+        content = content.replace(new RegExp(`!\\[.*?\\]\\(/images/${token}\\.png\\)\\n?`, 'g'), '');
       }
     } catch (err: any) {
       console.log(`   ⚠️  Error: ${err.message}`);
@@ -170,10 +177,26 @@ export async function importFeishu(args: string[]) {
   updateIndex(docInfos);
   
   const totalImages = docInfos.reduce((sum, d) => sum + d.images.length, 0);
+  const totalFailedImages = docInfos.reduce((sum, d) => {
+    const doc = docInfos.find(dd => dd.id === d.id);
+    return sum;
+  }, 0);
   
   console.log(`\n✅ Import complete!`);
   console.log(`   Documents: ${docInfos.length}`);
   console.log(`   Images: ${totalImages}`);
+  
+  // 检查是否有图片下载失败
+  const hasFailedImages = totalImages === 0 && docInfos.length > 0;
+  if (hasFailedImages) {
+    console.log(`\n⚠️  Image download may have failed due to permission issues.`);
+    console.log(`   To fix this, add the following permission to your Feishu app:`);
+    console.log(`   - drive:drive:readonly (云文档-读取文档)`);
+    console.log(`   or`);
+    console.log(`   - wiki:wiki:readonly (知识库-获取知识库信息)`);
+    console.log(`\n   Note: Images that failed to download have been removed from the documents.`);
+  }
+  
   console.log(`\nNext steps:`);
   console.log(`   adoc build`);
   console.log(`   adoc preview`);
@@ -181,9 +204,11 @@ export async function importFeishu(args: string[]) {
 
 function slugify(title: string): string {
   return title
-    .toLowerCase()
+    .trim()
+    .replace(/^[\s\-_\.·]+/, '')  // 去掉开头的特殊字符（包括中文点）
     .replace(/[\s]+/g, '-')
     .replace(/[^\w\-\u4e00-\u9fa5]/g, '')
+    .replace(/^-+/, '')  // 确保没有开头的破折号
     .slice(0, 50) || 'untitled';
 }
 

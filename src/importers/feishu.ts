@@ -158,6 +158,17 @@ export class FeishuClient {
           res.on('data', (chunk) => chunks.push(chunk));
           res.on('end', () => {
             const buffer = Buffer.concat(chunks);
+            
+            // 检查是否是错误响应（JSON）
+            try {
+              const text = buffer.toString('utf-8');
+              if (text.includes('"code"') && text.includes('99991672')) {
+                // 权限不足错误，不需要额外日志
+                resolve(false);
+                return;
+              }
+            } catch {}
+            
             if (buffer.length > 1000) {
               fs.writeFileSync(outputPath, buffer);
               resolve(true);
