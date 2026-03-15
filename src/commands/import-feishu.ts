@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { FeishuClient, WikiNode, sleep } from '../importers/feishu.js';
 import { loadConfig, isProtected } from '../utils/config.js';
+import { getGoogleFontsHead, writeThemeFiles, generateIndexContent } from '../utils/theme.js';
 
 interface DocInfo {
   id: string;
@@ -246,7 +247,7 @@ export default defineConfig({
   ignoreDeadLinks: true,
 
   head: [
-    ['link', { rel: 'icon', href: '${base}favicon.ico' }]
+${getGoogleFontsHead(base)}
   ],
 
   themeConfig: {
@@ -269,6 +270,23 @@ export default defineConfig({
 `;
 
   fs.writeFileSync(configFilePath, configContent);
+
+  // Write theme files (custom.css + theme/index.ts)
+  writeThemeFiles(docsDir);
+
+  // Generate index.md with topic cards from docs
+  const indexPath = path.join(docsDir, 'index.md');
+  if (!isProtected(indexPath, config)) {
+    const topLevelDocs = docs.filter(d => !d.parentSlug);
+    const cards = topLevelDocs.map(d => ({
+      title: d.title,
+      description: '',
+      link: '/' + d.path.replace('.md', '')
+    }));
+    const indexContent = generateIndexContent(config, cards);
+    fs.writeFileSync(indexPath, indexContent);
+  }
+
   console.log('   Generated VitePress config');
 }
 

@@ -2,6 +2,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { loadConfig } from '../utils/config.js';
+import { getGoogleFontsHead, writeThemeFiles, generateIndexContent } from '../utils/theme.js';
 
 export async function build(args: string[]) {
   const config = loadConfig();
@@ -58,14 +59,14 @@ export async function build(args: string[]) {
 function generateDefaultConfig(docsDir: string, config: any): void {
   const vitepressDir = path.join(docsDir, '.vitepress');
   fs.mkdirSync(vitepressDir, { recursive: true });
-  
+
   const base = config.deploy?.base || '/';
-  
+
   // 使用配置的 sidebar 或默认 auto
-  const sidebar = config.sidebar 
+  const sidebar = config.sidebar
     ? JSON.stringify(config.sidebar, null, 6)
     : "'auto'";
-  
+
   const configContent = `
 import { defineConfig } from 'vitepress'
 
@@ -73,38 +74,39 @@ export default defineConfig({
   title: '${config.title || 'Documentation'}',
   description: '${config.description || ''}',
   base: '${base}',
-  
+
+  ignoreDeadLinks: true,
+
+  head: [
+${getGoogleFontsHead(base)}
+  ],
+
   themeConfig: {
     nav: [
       { text: '首页', link: '/' }
     ],
-    
+
     sidebar: ${sidebar},
-    
+
     search: {
       provider: 'local'
+    },
+
+    outline: {
+      level: [2, 3],
+      label: '目录'
     }
   }
 })
 `;
-  
+
   fs.writeFileSync(path.join(vitepressDir, 'config.mts'), configContent);
+
+  // Write theme files (custom.css + theme/index.ts)
+  writeThemeFiles(docsDir);
 }
 
 function createDefaultIndex(indexPath: string, config: any): void {
-  const content = `---
-layout: home
-title: ${config.title || 'Documentation'}
-
-hero:
-  name: ${config.title || 'Documentation'}
-  text: ${config.description || ''}
-  actions:
-    - theme: brand
-      text: 开始阅读
-      link: /guide/
----
-`;
-  
+  const content = generateIndexContent(config, []);
   fs.writeFileSync(indexPath, content);
 }

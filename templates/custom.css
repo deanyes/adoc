@@ -1,0 +1,133 @@
+/* ADoc Default Theme - 极简白 */
+
+/* ========== 配色系统 ========== */
+:root {
+  --vp-c-brand-1: #3b82f6;
+  --vp-c-brand-2: #2563eb;
+  --vp-c-brand-3: #1d4ed8;
+  --vp-c-brand-soft: rgba(59, 130, 246, 0.1);
+
+  --vp-c-text-1: #1a1a1a;
+  --vp-c-text-2: #666666;
+  --vp-c-text-3: #999999;
+
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-soft: #f5f5f5;
+  --vp-c-bg-alt: #f0f0f0;
+
+  --vp-c-divider: #e5e5e5;
+
+  --vp-font-family-base: 'Inter', 'Noto Sans SC', ui-sans-serif, system-ui,
+    -apple-system, sans-serif;
+  --vp-font-family-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+}
+
+/* ========== 侧边栏层级增强 ========== */
+
+/* 分组标题 */
+.VPSidebar .VPSidebarItem.level-0 > .item > .text {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--vp-c-text-2);
+  padding: 4px 0;
+}
+
+/* 分组间距 */
+.VPSidebar .VPSidebarItem.level-0 {
+  padding-top: 24px;
+}
+
+.VPSidebar .VPSidebarItem.level-0:first-child {
+  padding-top: 0;
+}
+
+.VPSidebar .VPSidebarItem.level-0 > .items {
+  padding-top: 8px;
+}
+
+/* 子项目 */
+.VPSidebar .VPSidebarItem.level-1 > .item {
+  padding: 8px 12px;
+  margin: 2px 0;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.VPSidebar .VPSidebarItem.level-1 > .item:hover {
+  background: var(--vp-c-bg-soft);
+}
+
+.VPSidebar .VPSidebarItem.level-1.is-active > .item {
+  background: var(--vp-c-bg-soft);
+  font-weight: 500;
+}
+
+.VPSidebar .VPSidebarItem.level-1 > .item > .text {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--vp-c-text-2);
+}
+
+.VPSidebar .VPSidebarItem.level-1.is-active > .item > .text {
+  color: var(--vp-c-text-1);
+}
+
+/* 整体侧边栏 */
+.VPSidebar {
+  padding: 24px 16px !important;
+}
+
+/* ========== 顶部导航 ========== */
+.VPNavBar .VPNavBarMenu .VPNavBarMenuLink {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ========== 搜索框美化 ========== */
+.VPNavBarSearch .DocSearch-Button {
+  border-radius: 8px;
+}
+
+/* ========== 间距系统（8px 基准） ========== */
+.vp-doc {
+  line-height: 1.75;
+}
+
+.vp-doc h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.vp-doc h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-top: 48px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.vp-doc h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 32px;
+  margin-bottom: 8px;
+}
+
+.vp-doc p {
+  margin: 16px 0;
+}
+
+/* ========== 卡片样式 ========== */
+.vp-doc .custom-block {
+  border-radius: 8px;
+  padding: 16px 24px;
+  border: 1px solid var(--vp-c-divider);
+}
+
+.vp-doc .custom-block:hover {
+  border-color: #ddd;
+}
