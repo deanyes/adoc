@@ -1,6 +1,6 @@
 {
   "name": "adoc-agent",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Agent-first documentation tool. Let AI agents create and maintain docs.",
   "type": "module",
   "bin": {
