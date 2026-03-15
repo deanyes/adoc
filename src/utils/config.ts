@@ -12,6 +12,7 @@ export interface ADocConfig {
   name: string;
   title: string;
   description: string;
+  logo?: string;
   theme?: string;
   protect?: string[];
   sidebar?: SidebarItem[];

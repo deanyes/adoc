@@ -87,7 +87,7 @@ ${getGoogleFontsHead(base)}
     ],
 
     sidebar: ${sidebar},
-
+${config.logo ? `\n    logo: '${config.logo}',\n` : ''}
     search: {
       provider: 'local'
     },

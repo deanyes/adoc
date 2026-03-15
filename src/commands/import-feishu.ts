@@ -264,7 +264,7 @@ ${getGoogleFontsHead(base)}
     ],
 
     sidebar: ${JSON.stringify(finalSidebar, null, 6)},
-
+${config.logo ? `\n    logo: '${config.logo}',\n` : ''}
     search: {
       provider: 'local'
     },
