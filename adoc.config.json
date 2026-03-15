@@ -1,0 +1,10 @@
+{
+  "name": "adoc",
+  "title": "ADoc",
+  "description": "Agent-first 文档工具 — Agent 写文档，一键发布，漂亮好用",
+  "deploy": {
+    "target": "github-pages",
+    "repo": "https://github.com/deanyes/adoc.git",
+    "base": "/adoc/"
+  }
+}
