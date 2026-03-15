@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { isProtected, type ADocConfig } from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,25 +20,33 @@ export function getGoogleFontsHead(base: string): string {
 
 /**
  * Write custom.css and theme/index.ts into .vitepress/theme/
+ * Respects protect config — skips files that already exist and are protected.
  */
-export function writeThemeFiles(docsDir: string): void {
+export function writeThemeFiles(docsDir: string, config?: ADocConfig): void {
   const themeDir = path.join(docsDir, '.vitepress', 'theme');
   fs.mkdirSync(themeDir, { recursive: true });
 
-  // Copy custom.css from templates
+  // Copy custom.css from templates (skip if protected and exists)
   const cssSource = path.join(templatesDir, 'custom.css');
   const cssDest = path.join(themeDir, 'custom.css');
-  if (fs.existsSync(cssSource)) {
+  if (fs.existsSync(cssDest) && config && isProtected(cssDest, config)) {
+    console.log('   🔒 custom.css is protected, skipping');
+  } else if (fs.existsSync(cssSource)) {
     fs.copyFileSync(cssSource, cssDest);
   }
 
-  // Write theme/index.ts to import custom CSS
-  const themeIndex = `import DefaultTheme from 'vitepress/theme'
+  // Write theme/index.ts (skip if protected and exists)
+  const themeIndexPath = path.join(themeDir, 'index.ts');
+  if (fs.existsSync(themeIndexPath) && config && isProtected(themeIndexPath, config)) {
+    console.log('   🔒 theme/index.ts is protected, skipping');
+  } else {
+    const themeIndex = `import DefaultTheme from 'vitepress/theme'
 import './custom.css'
 
 export default DefaultTheme
 `;
-  fs.writeFileSync(path.join(themeDir, 'index.ts'), themeIndex);
+    fs.writeFileSync(themeIndexPath, themeIndex);
+  }
 }
 
 interface TopicCard {

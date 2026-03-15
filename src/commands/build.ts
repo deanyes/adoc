@@ -1,7 +1,7 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { loadConfig } from '../utils/config.js';
+import { loadConfig, isProtected } from '../utils/config.js';
 import { getGoogleFontsHead, writeThemeFiles, generateIndexContent } from '../utils/theme.js';
 
 export async function build(args: string[]) {
@@ -100,10 +100,16 @@ ${config.logo ? `\n    logo: '${config.logo}',\n` : ''}
 })
 `;
 
-  fs.writeFileSync(path.join(vitepressDir, 'config.mts'), configContent);
+  // Check if config.mts is protected
+  const configFilePath = path.join(vitepressDir, 'config.mts');
+  if (fs.existsSync(configFilePath) && isProtected(configFilePath, config)) {
+    console.log('   🔒 VitePress config is protected, skipping');
+  } else {
+    fs.writeFileSync(configFilePath, configContent);
+  }
 
   // Write theme files (custom.css + theme/index.ts)
-  writeThemeFiles(docsDir);
+  writeThemeFiles(docsDir, config);
 }
 
 function createDefaultIndex(indexPath: string, config: any): void {

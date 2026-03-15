@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { FeishuClient, WikiNode, sleep } from '../importers/feishu.js';
-import { loadConfig, isProtected } from '../utils/config.js';
+import { loadConfig, isProtected, stripEmoji, type ADocConfig } from '../utils/config.js';
 import { getGoogleFontsHead, writeThemeFiles, generateIndexContent } from '../utils/theme.js';
 
 interface DocInfo {
@@ -242,7 +242,7 @@ function generateVitePressConfig(docsDir: string, docs: DocInfo[], config: any):
   const base = config.deploy?.base || '/';
 
   // 使用用户配置的 sidebar，否则自动生成
-  const finalSidebar = config.sidebar ?? buildAutoSidebar(docs);
+  const finalSidebar = config.sidebar ?? buildAutoSidebar(docs, config);
 
   const configContent = `
 import { defineConfig } from 'vitepress'
@@ -280,7 +280,7 @@ ${config.logo ? `\n    logo: '${config.logo}',\n` : ''}
   fs.writeFileSync(configFilePath, configContent);
 
   // Write theme files (custom.css + theme/index.ts)
-  writeThemeFiles(docsDir);
+  writeThemeFiles(docsDir, config);
 
   // Generate index.md with topic cards from docs
   const indexPath = path.join(docsDir, 'index.md');
@@ -298,8 +298,10 @@ ${config.logo ? `\n    logo: '${config.logo}',\n` : ''}
   console.log('   Generated VitePress config');
 }
 
-function buildAutoSidebar(docs: DocInfo[]): any[] {
+function buildAutoSidebar(docs: DocInfo[], config?: ADocConfig): any[] {
   const finalSidebar: any[] = [];
+  const iconsMode = config?.icons ?? 'emoji';
+  const formatTitle = (title: string) => iconsMode === 'none' ? stripEmoji(title) : title;
 
   for (const doc of docs) {
     if (doc.parentSlug) continue;
@@ -308,19 +310,19 @@ function buildAutoSidebar(docs: DocInfo[]): any[] {
 
     if (children.length > 0) {
       finalSidebar.push({
-        text: doc.title,
+        text: formatTitle(doc.title),
         collapsed: false,
         items: [
           { text: '概览', link: '/' + doc.path.replace('.md', '') },
           ...children.map(c => ({
-            text: c.title,
+            text: formatTitle(c.title),
             link: '/' + c.path.replace('.md', '')
           }))
         ]
       });
     } else {
       finalSidebar.push({
-        text: doc.title,
+        text: formatTitle(doc.title),
         link: '/' + doc.path.replace('.md', '')
       });
     }
