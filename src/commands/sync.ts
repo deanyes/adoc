@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { FeishuClient, sleep } from '../importers/feishu.js';
-import { loadConfig } from '../utils/config.js';
+import { loadConfig, isProtected } from '../utils/config.js';
 
 interface LockFile {
   version: number;
@@ -92,6 +92,10 @@ export async function sync(args: string[]) {
       const doc = lock.documents[id];
       if (doc) {
         const filePath = path.resolve(doc.path);
+        if (isProtected(filePath, config)) {
+          console.log(`  🔒 Protected, skipping: ${doc.path}`);
+          continue;
+        }
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
           console.log(`  Deleted: ${doc.path}`);

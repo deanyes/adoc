@@ -1,11 +1,20 @@
 import fs from 'fs';
 import path from 'path';
 
+export interface SidebarItem {
+  text: string;
+  link?: string;
+  collapsed?: boolean;
+  items?: SidebarItem[];
+}
+
 export interface ADocConfig {
   name: string;
   title: string;
   description: string;
   theme?: string;
+  protect?: string[];
+  sidebar?: SidebarItem[];
   import?: {
     feishu?: {
       appId: string;
@@ -44,6 +53,19 @@ export function loadConfig(): ADocConfig {
     console.error('Failed to parse adoc.config.json. Please check the file format.');
     process.exit(1);
   }
+}
+
+const DEFAULT_PROTECT = ['.vitepress/theme/'];
+
+export function isProtected(filePath: string, config: ADocConfig): boolean {
+  const patterns = config.protect ?? DEFAULT_PROTECT;
+  const docsDir = path.resolve('docs');
+  const rel = path.relative(docsDir, path.resolve(filePath));
+
+  return patterns.some(pattern => {
+    const normalized = pattern.replace(/\/$/, '');
+    return rel === normalized || rel.startsWith(normalized + '/');
+  });
 }
 
 export function saveConfig(config: ADocConfig): void {

@@ -109,6 +109,52 @@ Found 66 documents total
 - 表格
 - 待办事项
 
+## 高级配置
+
+### 内容保护
+
+导入时默认保护 `.vitepress/theme/` 目录，防止自定义样式被覆盖。可通过 `protect` 配置项自定义：
+
+```json
+{
+  "protect": [
+    ".vitepress/theme/",
+    ".vitepress/config.mts",
+    "custom-page.md"
+  ]
+}
+```
+
+受保护的文件在 `import` 和 `sync` 时都会被跳过。
+
+### 自定义侧边栏
+
+默认情况下侧边栏根据文档层级自动生成。可通过 `sidebar` 配置项手动控制顺序、分组和折叠状态：
+
+```json
+{
+  "sidebar": [
+    {
+      "text": "快速开始",
+      "collapsed": false,
+      "items": [
+        { "text": "简介", "link": "/intro" },
+        { "text": "安装", "link": "/install" }
+      ]
+    },
+    {
+      "text": "进阶",
+      "collapsed": true,
+      "items": [
+        { "text": "自定义主题", "link": "/custom-theme" }
+      ]
+    }
+  ]
+}
+```
+
+如果未配置 `sidebar`，将保持自动生成逻辑。
+
 ## 常见问题
 
 ### Q: 导入报错 "permission denied"

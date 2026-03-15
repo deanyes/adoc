@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { FeishuClient, WikiNode, sleep } from '../importers/feishu.js';
-import { loadConfig } from '../utils/config.js';
+import { loadConfig, isProtected } from '../utils/config.js';
 
 interface DocInfo {
   id: string;
@@ -73,8 +73,14 @@ export async function importFeishu(args: string[]) {
     const docPath = subDir ? `${subDir}/${slug}.md` : `${slug}.md`;
     const fullPath = path.join(docsDir, docPath);
     
+    // 检查是否受保护
+    if (isProtected(fullPath, config)) {
+      console.log(`   🔒 Protected, skipping: ${docPath}`);
+      return;
+    }
+
     fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-    
+
     // 获取文档内容
     let content = '';
     const images: string[] = [];
@@ -170,7 +176,7 @@ export async function importFeishu(args: string[]) {
     await processNode(node);
   }
   
-  // 生成 VitePress 配置
+  // 生成 VitePress 配置（跳过受保护的文件）
   generateVitePressConfig(docsDir, docInfos, config);
   
   // 更新索引
@@ -214,52 +220,66 @@ function slugify(title: string): string {
 
 function generateVitePressConfig(docsDir: string, docs: DocInfo[], config: any): void {
   const vitepressDir = path.join(docsDir, '.vitepress');
+  const configFilePath = path.join(vitepressDir, 'config.mts');
+
+  // 检查 config.mts 是否受保护
+  if (isProtected(configFilePath, config)) {
+    console.log('   🔒 VitePress config is protected, skipping');
+    return;
+  }
+
   fs.mkdirSync(vitepressDir, { recursive: true });
-  
+
   const base = config.deploy?.base || '/';
-  
-  // 构建 sidebar 结构
-  const sidebar: any[] = [];
-  const groups = new Map<string, any[]>();
-  
-  // 分组
-  for (const doc of docs) {
-    if (doc.parentSlug) {
-      // 子文档
-      if (!groups.has(doc.parentSlug)) {
-        groups.set(doc.parentSlug, []);
-      }
-      groups.get(doc.parentSlug)!.push({
-        text: doc.title,
-        link: '/' + doc.path.replace('.md', '')
-      });
-    } else {
-      // 根文档
-      const item: any = {
-        text: doc.title,
-        link: '/' + doc.path.replace('.md', '')
-      };
-      
-      // 检查是否有子文档
-      const children = groups.get(doc.slug);
-      if (children && children.length > 0) {
-        item.items = children;
-        item.collapsed = true;
-      }
-      
-      sidebar.push(item);
+
+  // 使用用户配置的 sidebar，否则自动生成
+  const finalSidebar = config.sidebar ?? buildAutoSidebar(docs);
+
+  const configContent = `
+import { defineConfig } from 'vitepress'
+
+export default defineConfig({
+  title: '${config.title || 'Documentation'}',
+  description: '${config.description || ''}',
+  base: '${base}',
+
+  ignoreDeadLinks: true,
+
+  head: [
+    ['link', { rel: 'icon', href: '${base}favicon.ico' }]
+  ],
+
+  themeConfig: {
+    nav: [
+      { text: '首页', link: '/' }
+    ],
+
+    sidebar: ${JSON.stringify(finalSidebar, null, 6)},
+
+    search: {
+      provider: 'local'
+    },
+
+    outline: {
+      level: [2, 3],
+      label: '目录'
     }
   }
-  
-  // 对于有子文档的组，重新构建
+})
+`;
+
+  fs.writeFileSync(configFilePath, configContent);
+  console.log('   Generated VitePress config');
+}
+
+function buildAutoSidebar(docs: DocInfo[]): any[] {
   const finalSidebar: any[] = [];
-  const processedGroups = new Set<string>();
-  
+
   for (const doc of docs) {
     if (doc.parentSlug) continue;
-    
+
     const children = docs.filter(d => d.parentSlug === doc.slug);
-    
+
     if (children.length > 0) {
       finalSidebar.push({
         text: doc.title,
@@ -279,42 +299,8 @@ function generateVitePressConfig(docsDir: string, docs: DocInfo[], config: any):
       });
     }
   }
-  
-  const configContent = `
-import { defineConfig } from 'vitepress'
 
-export default defineConfig({
-  title: '${config.title || 'Documentation'}',
-  description: '${config.description || ''}',
-  base: '${base}',
-  
-  ignoreDeadLinks: true,
-  
-  head: [
-    ['link', { rel: 'icon', href: '${base}favicon.ico' }]
-  ],
-  
-  themeConfig: {
-    nav: [
-      { text: '首页', link: '/' }
-    ],
-    
-    sidebar: ${JSON.stringify(finalSidebar, null, 6)},
-    
-    search: {
-      provider: 'local'
-    },
-    
-    outline: {
-      level: [2, 3],
-      label: '目录'
-    }
-  }
-})
-`;
-  
-  fs.writeFileSync(path.join(vitepressDir, 'config.mts'), configContent);
-  console.log('   Generated VitePress config');
+  return finalSidebar;
 }
 
 function updateIndex(docInfos: DocInfo[]): void {
