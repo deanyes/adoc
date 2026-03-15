@@ -24,9 +24,12 @@ export async function deploy(args: string[]) {
     case 'vercel':
       await deployVercel(distDir);
       break;
+    case 'cloudflare':
+      await deployCloudflare(distDir, config, args);
+      break;
     default:
       console.error(`Unknown deploy target: ${target}`);
-      console.log('Supported: github-pages, vercel');
+      console.log('Supported: github-pages, vercel, cloudflare');
       process.exit(1);
   }
 }
@@ -86,12 +89,41 @@ async function deployGitHubPages(distDir: string, config: any, args: string[]): 
 
 async function deployVercel(distDir: string): Promise<void> {
   console.log('Deploying to Vercel...');
-  
+
   try {
     execSync('npx vercel --prod', { cwd: distDir, stdio: 'inherit' });
     console.log('\n✅ Deployed to Vercel!');
   } catch (err) {
     console.error('Vercel deployment failed. Make sure you have vercel CLI configured.');
+    process.exit(1);
+  }
+}
+
+async function deployCloudflare(distDir: string, config: any, args: string[]): Promise<void> {
+  const projectName = args[1] || config.deploy?.cloudflareProject || config.title?.toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'adoc-site';
+
+  console.log(`Deploying to Cloudflare Pages: ${projectName}`);
+
+  // 检查 wrangler CLI
+  try {
+    execSync('npx wrangler --version', { stdio: 'pipe' });
+  } catch {
+    console.error('Error: wrangler CLI not found.');
+    console.error('Install it with: npm install -g wrangler');
+    console.error('Then login with: wrangler login');
+    process.exit(1);
+  }
+
+  try {
+    execSync(`npx wrangler pages deploy ${distDir} --project-name ${projectName}`, {
+      stdio: 'inherit'
+    });
+    console.log(`\n✅ Deployed to Cloudflare Pages!`);
+    console.log(`   URL: https://${projectName}.pages.dev`);
+    console.log(`\n💡 Cloudflare Pages 国内访问更稳定，推荐作为面向国内用户的部署平台`);
+  } catch (err) {
+    console.error('Cloudflare Pages deployment failed.');
+    console.error('Make sure you have logged in: npx wrangler login');
     process.exit(1);
   }
 }

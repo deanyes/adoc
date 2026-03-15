@@ -122,7 +122,66 @@ export class FeishuClient {
     return blocks;
   }
   
-  async downloadImage(token: string, outputPath: string): Promise<boolean> {
+  async downloadImage(token: string, outputPath: string, tempUrl?: string): Promise<boolean> {
+    // 策略1：优先使用临时 URL 直接下载（不需要额外权限）
+    if (tempUrl) {
+      const success = await this.downloadFromUrl(tempUrl, outputPath);
+      if (success) return true;
+    }
+
+    // 策略2：使用 drive/v1/medias API 下载
+    const mediaSuccess = await this.downloadFromMediaApi(token, outputPath);
+    if (mediaSuccess) return true;
+
+    // 策略3：尝试 drive/v1/files API（另一种文件下载端点）
+    const fileSuccess = await this.downloadFromFileApi(token, outputPath);
+    if (fileSuccess) return true;
+
+    return false;
+  }
+
+  private downloadFromUrl(url: string, outputPath: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const parsedUrl = new URL(url);
+      const options = {
+        hostname: parsedUrl.hostname,
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'ADoc/1.0'
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        if (res.statusCode === 302 || res.statusCode === 301) {
+          const redirectUrl = res.headers.location;
+          if (redirectUrl) {
+            this.downloadFromUrl(redirectUrl, outputPath).then(resolve);
+          } else {
+            resolve(false);
+          }
+          return;
+        }
+
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          if (buffer.length > 1000) {
+            fs.writeFileSync(outputPath, buffer);
+            resolve(true);
+          } else {
+            resolve(false);
+          }
+        });
+      });
+
+      req.on('error', () => resolve(false));
+      req.end();
+    });
+  }
+
+  private downloadFromMediaApi(token: string, outputPath: string): Promise<boolean> {
     return new Promise((resolve) => {
       const options = {
         hostname: 'open.feishu.cn',
@@ -132,53 +191,89 @@ export class FeishuClient {
           'Authorization': `Bearer ${this.accessToken}`
         }
       };
-      
+
       const req = https.request(options, (res) => {
         if (res.statusCode === 302 || res.statusCode === 301) {
           const redirectUrl = res.headers.location;
           if (redirectUrl) {
-            https.get(redirectUrl, (redirectRes) => {
-              const chunks: Buffer[] = [];
-              redirectRes.on('data', (chunk) => chunks.push(chunk));
-              redirectRes.on('end', () => {
-                const buffer = Buffer.concat(chunks);
-                if (buffer.length > 1000) {
-                  fs.writeFileSync(outputPath, buffer);
-                  resolve(true);
-                } else {
-                  resolve(false);
-                }
-              });
-            }).on('error', () => resolve(false));
+            this.downloadFromUrl(redirectUrl, outputPath).then(resolve);
           } else {
             resolve(false);
           }
-        } else {
-          const chunks: Buffer[] = [];
-          res.on('data', (chunk) => chunks.push(chunk));
-          res.on('end', () => {
-            const buffer = Buffer.concat(chunks);
-            
-            // 检查是否是错误响应（JSON）
-            try {
-              const text = buffer.toString('utf-8');
-              if (text.includes('"code"') && text.includes('99991672')) {
-                // 权限不足错误，不需要额外日志
-                resolve(false);
-                return;
-              }
-            } catch {}
-            
-            if (buffer.length > 1000) {
-              fs.writeFileSync(outputPath, buffer);
-              resolve(true);
-            } else {
-              resolve(false);
-            }
-          });
+          return;
         }
+
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+
+          // 检查是否是错误响应（JSON）
+          try {
+            const text = buffer.toString('utf-8');
+            if (text.includes('"code"')) {
+              resolve(false);
+              return;
+            }
+          } catch {}
+
+          if (buffer.length > 1000) {
+            fs.writeFileSync(outputPath, buffer);
+            resolve(true);
+          } else {
+            resolve(false);
+          }
+        });
       });
-      
+
+      req.on('error', () => resolve(false));
+      req.end();
+    });
+  }
+
+  private downloadFromFileApi(token: string, outputPath: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const options = {
+        hostname: 'open.feishu.cn',
+        path: `/open-apis/drive/v1/files/${token}/download`,
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        if (res.statusCode === 302 || res.statusCode === 301) {
+          const redirectUrl = res.headers.location;
+          if (redirectUrl) {
+            this.downloadFromUrl(redirectUrl, outputPath).then(resolve);
+          } else {
+            resolve(false);
+          }
+          return;
+        }
+
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          try {
+            const text = buffer.toString('utf-8');
+            if (text.includes('"code"')) {
+              resolve(false);
+              return;
+            }
+          } catch {}
+
+          if (buffer.length > 1000) {
+            fs.writeFileSync(outputPath, buffer);
+            resolve(true);
+          } else {
+            resolve(false);
+          }
+        });
+      });
+
       req.on('error', () => resolve(false));
       req.end();
     });
@@ -187,6 +282,7 @@ export class FeishuClient {
   private blocksToMarkdown(blocks: any[], docToken: string): string {
     const lines: string[] = [];
     const imageTokens: string[] = [];
+    const imageUrls: Record<string, string> = {};
     let inList = false;
     
     for (let i = 0; i < blocks.length; i++) {
@@ -313,6 +409,11 @@ export class FeishuClient {
           if (block.image?.token) {
             const token = block.image.token;
             imageTokens.push(token);
+            // 提取临时 URL（飞书 API 可能返回多种 URL 字段）
+            const tmpUrl = block.image.url || block.image.tmp_url || block.image.origin_url || block.image.preview_url;
+            if (tmpUrl) {
+              imageUrls[token] = tmpUrl;
+            }
             lines.push(`![](/images/${token}.png)`);
             lines.push('');
           }
@@ -339,6 +440,7 @@ export class FeishuClient {
     }
     
     (this as any)._lastImageTokens = imageTokens;
+    (this as any)._lastImageUrls = imageUrls;
     return lines.join('\n');
   }
   
@@ -417,6 +519,10 @@ export class FeishuClient {
   
   getLastImageTokens(): string[] {
     return (this as any)._lastImageTokens || [];
+  }
+
+  getLastImageUrls(): Record<string, string> {
+    return (this as any)._lastImageUrls || {};
   }
   
   private textElementsToMd(elements: any[]): string {

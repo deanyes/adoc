@@ -34,7 +34,7 @@ Commands:
   # Build & Deploy
   build                    Build static site
   preview                  Start preview server
-  deploy [target]          Deploy (github-pages, vercel)
+  deploy [target]          Deploy (github-pages, vercel, cloudflare)
 
 Options:
   -h, --help               Show help

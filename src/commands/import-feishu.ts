@@ -90,14 +90,16 @@ export async function importFeishu(args: string[]) {
     try {
       content = await client.getDocumentContent(node.obj_token);
       const imageTokens = client.getLastImageTokens();
-      
+      const imageUrls = client.getLastImageUrls();
+
       // 下载图片
       for (const token of imageTokens) {
         const imagePath = path.join(imagesDir, `${token}.png`);
-        
+
         if (!fs.existsSync(imagePath)) {
           console.log(`   📷 Downloading image...`);
-          const success = await client.downloadImage(token, imagePath);
+          const tempUrl = imageUrls[token];
+          const success = await client.downloadImage(token, imagePath, tempUrl);
           
           if (success) {
             images.push(token);
