@@ -61,6 +61,11 @@ function generateDefaultConfig(docsDir: string, config: any): void {
   
   const base = config.deploy?.base || '/';
   
+  // 使用配置的 sidebar 或默认 auto
+  const sidebar = config.sidebar 
+    ? JSON.stringify(config.sidebar, null, 6)
+    : "'auto'";
+  
   const configContent = `
 import { defineConfig } from 'vitepress'
 
@@ -74,7 +79,7 @@ export default defineConfig({
       { text: '首页', link: '/' }
     ],
     
-    sidebar: 'auto',
+    sidebar: ${sidebar},
     
     search: {
       provider: 'local'
