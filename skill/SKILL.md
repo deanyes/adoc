@@ -12,113 +12,73 @@ description: |
 
 # ADoc - Agent 优先的文档工具
 
+基于 Tome 框架，和 Get笔记文档同款样式。
+
 ## 前提条件
 
-确保 `gh` CLI 已安装且已登录：
-
 ```bash
-gh auth status
+gh auth status  # 确保已登录
 ```
 
-## 一键创建文档（使用 ADoc Tome 模板）
+## 一键创建文档
 
 ```bash
 #!/bin/bash
-# === 配置区域（根据用户请求修改）===
-PROJECT_NAME="项目名称"      # 例如：My App
-REPO_NAME="项目名-docs"      # 例如：my-app-docs
+# === 配置（根据用户需求修改）===
+PROJECT_NAME="项目名称"
+REPO_NAME="项目名-docs"
 
-# === 以下自动执行 ===
-
-# 1. 获取用户名
+# === 自动执行 ===
 OWNER=$(gh api user --jq '.login')
 
-# 2. 从模板创建仓库
+# 1. 从模板创建
 gh repo create "$REPO_NAME" --public --clone --template deanyes/adoc-template
 cd "$REPO_NAME"
 
-# 3. 修改配置文件中的项目名
-sed -i '' "s/ADoc Template/$PROJECT_NAME/g" docs/.vitepress/config.mts 2>/dev/null || \
-sed -i "s/ADoc Template/$PROJECT_NAME/g" docs/.vitepress/config.mts
+# 2. 修改项目名
+sed -i '' "s/文档标题/$PROJECT_NAME/g" tome.config.js 2>/dev/null || \
+sed -i "s/文档标题/$PROJECT_NAME/g" tome.config.js
 
-sed -i '' "s/ADoc Template/$PROJECT_NAME/g" docs/index.md 2>/dev/null || \
-sed -i "s/ADoc Template/$PROJECT_NAME/g" docs/index.md
+# 3. 安装依赖并构建
+npm install
+npm run build
 
-# 4. 提交修改
-git add -A
-git commit -m "docs: customize for $PROJECT_NAME"
-git push
+# 4. 部署到 GitHub Pages（推送 out 目录）
+npx gh-pages -d out
 
-# 5. 启用 GitHub Pages
-sleep 2
-gh api "repos/$OWNER/$REPO_NAME/pages" -X POST \
-  -f build_type="workflow" 2>/dev/null || \
-gh api "repos/$OWNER/$REPO_NAME/pages" -X PUT \
-  -f build_type="workflow" 2>/dev/null || \
-echo "请手动在 Settings > Pages 启用 GitHub Actions 部署"
+# 5. 启用 Pages
+gh api "repos/$OWNER/$REPO_NAME/pages" -X POST -f source='{"branch":"gh-pages","path":"/"}' 2>/dev/null || true
 
-# 6. 输出结果
 echo ""
 echo "✅ 文档创建完成！"
 echo ""
 echo "📖 文档地址：https://$OWNER.github.io/$REPO_NAME/"
 echo "📁 仓库地址：https://github.com/$OWNER/$REPO_NAME"
 echo ""
-echo "下一步："
-echo "1. 编辑 docs/ 目录下的 Markdown 文件添加内容"
-echo "2. git add . && git commit -m 'docs: update' && git push"
-echo "3. GitHub Actions 会自动构建部署"
-echo ""
-echo "注意：首次部署需要 2-3 分钟"
+echo "编辑文档：修改 pages/ 目录下的 .md 文件"
+echo "重新部署：npm run build && npx gh-pages -d out"
 ```
 
 ## 添加新页面
 
-```bash
-# 在 docs/ 目录下创建 Markdown 文件
-cat > docs/new-page.md << 'EOF'
----
-title: 新页面
----
-
-# 新页面标题
-
-内容...
-EOF
-
-# 如果需要侧边栏显示，编辑 docs/.vitepress/config.mts 添加到 sidebar
-```
-
-## 修改主题颜色
-
-编辑 `docs/.vitepress/theme/style.css`，修改 CSS 变量：
-
-```css
-:root {
-  --vp-c-brand-1: #F59E0B;  /* 主色 */
-  --vp-c-brand-2: #D97706;  /* 悬停色 */
-}
-```
+1. 在 `pages/` 目录创建 .md 文件
+2. 在 `tome.config.js` 的 navigation 中添加页面路径
+3. 重新构建部署
 
 ## 文档结构
 
 ```
-docs/
-├── index.md              # 首页
-├── getting-started/      # 快速开始
+pages/
+├── getting-started/
+│   ├── index.md
+│   └── quickstart.md
+├── features/
 │   └── index.md
-├── features/             # 功能介绍
-│   └── index.md
-└── .vitepress/
-    ├── config.mts        # 站点配置
-    └── theme/
-        ├── index.js      # 主题入口
-        └── style.css     # Tome 样式
+└── faq/
+    └── index.md
 ```
 
 ## 输出格式
-
-完成后返回：
 
 ```
 ✅ 文档创建完成！
@@ -126,10 +86,6 @@ docs/
 📖 文档地址：https://{owner}.github.io/{repo}/
 📁 仓库地址：https://github.com/{owner}/{repo}
 
-下一步：
-1. 编辑 docs/ 目录下的 Markdown 文件添加内容
-2. git add . && git commit -m 'docs: update' && git push
-3. GitHub Actions 会自动构建部署
-
-注意：首次部署需要 2-3 分钟
+编辑文档：修改 pages/ 目录下的 .md 文件
+重新部署：npm run build && npx gh-pages -d out
 ```
