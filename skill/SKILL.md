@@ -12,80 +12,81 @@ description: |
 
 # ADoc - Agent 优先的文档工具
 
-基于 Tome 框架，和 Get笔记文档同款样式。
-
 ## 前提条件
 
 ```bash
-gh auth status  # 确保已登录
+gh auth status  # 确保 GitHub CLI 已登录
 ```
 
-## 一键创建文档
+## 一键创建文档（推荐）
 
 ```bash
-#!/bin/bash
-# === 配置（根据用户需求修改）===
-PROJECT_NAME="项目名称"
-REPO_NAME="项目名-docs"
+npx create-adoc <仓库名> --name "站点标题" --deploy
+```
 
-# === 自动执行 ===
-OWNER=$(gh api user --jq '.login')
+**示例：**
+```bash
+npx create-adoc my-docs --name "我的文档" --deploy
+```
 
+**输出：**
+```
+✅ 文档创建完成！
+
+📖 文档地址: https://xxx.github.io/my-docs/
+📁 仓库地址: https://github.com/xxx/my-docs
+```
+
+就这一条命令，自动完成：
+- 从模板创建仓库
+- 配置站点名称
+- 安装依赖并构建
+- 部署到 GitHub Pages
+
+## 手动流程（备用）
+
+如果 npx 不可用：
+
+```bash
 # 1. 从模板创建
-gh repo create "$REPO_NAME" --public --clone --template deanyes/adoc-template
-cd "$REPO_NAME"
+gh repo create my-docs --public --clone --template deanyes/adoc-template
+cd my-docs
 
-# 2. 修改项目名
-sed -i '' "s/文档标题/$PROJECT_NAME/g" tome.config.js 2>/dev/null || \
-sed -i "s/文档标题/$PROJECT_NAME/g" tome.config.js
+# 2. 修改配置
+# 编辑 tome.config.js 中的 name
 
-# 3. 安装依赖并构建
+# 3. 安装构建
 npm install
 npm run build
 
-# 4. 部署到 GitHub Pages（推送 out 目录）
+# 4. 部署
 npx gh-pages -d out
-
-# 5. 启用 Pages
-gh api "repos/$OWNER/$REPO_NAME/pages" -X POST -f source='{"branch":"gh-pages","path":"/"}' 2>/dev/null || true
-
-echo ""
-echo "✅ 文档创建完成！"
-echo ""
-echo "📖 文档地址：https://$OWNER.github.io/$REPO_NAME/"
-echo "📁 仓库地址：https://github.com/$OWNER/$REPO_NAME"
-echo ""
-echo "编辑文档：修改 pages/ 目录下的 .md 文件"
-echo "重新部署：npm run build && npx gh-pages -d out"
 ```
 
-## 添加新页面
+## 添加/编辑文档
 
-1. 在 `pages/` 目录创建 .md 文件
-2. 在 `tome.config.js` 的 navigation 中添加页面路径
-3. 重新构建部署
-
-## 文档结构
-
+```bash
+# 编辑 pages/ 目录下的 .md 文件
+# 重新部署
+npm run build && npx gh-pages -d out
 ```
-pages/
-├── getting-started/
-│   ├── index.md
-│   └── quickstart.md
-├── features/
-│   └── index.md
-└── faq/
-    └── index.md
+
+## 检查部署状态
+
+```bash
+curl -sI https://<用户名>.github.io/<仓库名>/ | head -1
+# 返回 HTTP/2 200 表示成功
 ```
 
 ## 输出格式
 
+完成后返回：
+
 ```
 ✅ 文档创建完成！
 
-📖 文档地址：https://{owner}.github.io/{repo}/
-📁 仓库地址：https://github.com/{owner}/{repo}
+📖 文档地址：https://{用户名}.github.io/{仓库名}/
+📁 仓库地址：https://github.com/{用户名}/{仓库名}
 
-编辑文档：修改 pages/ 目录下的 .md 文件
-重新部署：npm run build && npx gh-pages -d out
+文档已部署，1-2分钟后可访问。
 ```
