@@ -225,15 +225,34 @@ npm run build
 
 ---
 
-## 给 OpenClaw 用户
+## OpenClaw Skill
 
-ADoc 提供了 OpenClaw Skill，安装后你的 Agent 就能用：
+ADoc 提供了 OpenClaw Skill，安装后你的 Agent 就能自动使用 ADoc。
+
+### 安装 Skill
 
 ```bash
-# Skill 在 skills/adoc/
-# 使用方式：告诉你的 Agent
-"给 github.com/xxx/my-project 建文档"
+# 方式 1：直接复制
+mkdir -p ~/.openclaw/skills/adoc
+curl -o ~/.openclaw/skills/adoc/SKILL.md \
+  https://raw.githubusercontent.com/deanyes/adoc/main/skill/SKILL.md
+
+# 方式 2：克隆仓库后复制
+git clone https://github.com/deanyes/adoc.git
+cp -r adoc/skill ~/.openclaw/skills/adoc
 ```
+
+### 使用
+
+安装后，直接告诉你的 Agent：
+
+```
+"给 github.com/xxx/my-project 建使用文档"
+"用 ADoc 创建产品文档"
+"帮我写一份 API 文档"
+```
+
+Agent 会自动完成所有操作，返回文档访问地址。
 
 ---
 
