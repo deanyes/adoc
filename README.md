@@ -1,163 +1,135 @@
 # ADoc
 
-**Agent 写文档，一键发布，漂亮好用**
+**Agent 优先的文档工具 —— 让 AI 帮你写文档，一键发布**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-📖 [文档](https://deanyes.github.io/adoc/) | 🤖 [Agent 友好设计](https://deanyes.github.io/adoc/agent-friendly.html)
+🌐 **在线使用**：https://deanyes.github.io/adoc/
 
 ---
 
-## 为什么选 ADoc？
+## 什么是 ADoc？
 
-| | Notion / 飞书 | VitePress | **ADoc** |
-|--|--------------|-----------|----------|
-| Agent 支持 | 弱 | 无 | **原生** |
-| 部署难度 | 要配置 | 要开发 | **一键** |
-| 上手门槛 | 中 | 高 | **零** |
+ADoc 是一个 **Agent 优先** 的文档工具。你只需要告诉你的 AI Agent：
 
-**一句话：** Agent 能用命令行完成所有操作，不需要模拟点击或处理复杂认证。
+> "给我的项目建一份使用文档"
+
+Agent 就会自动创建、维护文档，并发布到网上供用户访问。
+
+**零服务器、零成本、完全基于 GitHub。**
+
+---
+
+## 三种角色
+
+| 角色 | 做什么 | 怎么用 |
+|------|--------|--------|
+| 🤖 **Agent** | 创建和维护文档（主力） | 通过 GitHub API 操作 |
+| 👤 **维护者** | 查看/编辑文档 | 访问 ADoc 编辑器 |
+| 📖 **用户** | 阅读文档 | 访问发布的文档链接 |
 
 ---
 
 ## 快速开始
 
-```bash
-# 安装
-git clone https://github.com/deanyes/adoc.git
-cd adoc && npm install && npm run build && npm link
+### 方式 1：让 Agent 帮你建文档
 
-# 创建项目
-adoc init my-docs && cd my-docs
+告诉你的 AI Agent（OpenClaw / ChatGPT / Claude）：
 
-# 写文档
-adoc create "快速开始" --content "# 快速开始\n\n这是第一篇文档..."
-
-# 预览
-adoc preview
-
-# 发布
-adoc deploy github-pages
 ```
+"用 ADoc 给 github.com/xxx/my-project 建使用文档"
+```
+
+Agent 会自动完成一切，给你返回文档地址。
+
+### 方式 2：手动使用 ADoc 编辑器
+
+1. 打开 https://deanyes.github.io/adoc/
+2. 粘贴 GitHub Token（[创建 Token](https://github.com/settings/tokens/new?scopes=repo)）
+3. 选择仓库
+4. 开始编辑
 
 ---
 
-## Agent 友好设计
+## 特性
 
-### 命令语义清晰
-```bash
-adoc create "标题" --content "内容"
-adoc update <id> --content "新内容"
-adoc delete <id>
-```
-
-### 支持管道输入
-```bash
-echo "长内容..." | adoc create "文档" --stdin
-cat file.md | adoc update doc-id --stdin --append
-```
-
-### 机器可读输出
-```bash
-adoc list --json
-adoc get my-doc --json
-```
-
-### MCP 协议接入
-```bash
-adoc mcp  # 启动 MCP Server
-```
-
-### 无交互式操作
-所有操作都可以通过参数完成，没有等待输入的提示。
+- ✅ **Agent 优先**：AI Agent 可以直接操作，不需要模拟点击
+- ✅ **零成本**：完全基于 GitHub，免费托管
+- ✅ **美观**：Tome 风格的阅读体验
+- ✅ **实时预览**：编辑后立即看到效果
+- ✅ **开源**：代码完全开放，可自行部署
 
 ---
 
-## CLI 命令
+## 架构
 
-```bash
-# 文档操作
-adoc create <title>           # 创建文档
-adoc update <id>              # 更新文档
-adoc get <id>                 # 获取内容
-adoc list [--tree] [--json]   # 列出文档
-adoc delete <id>              # 删除文档
-adoc search <query>           # 搜索
-
-# 导入同步
-adoc import feishu <space-id> # 从飞书导入
-adoc sync                     # 同步更新
-
-# 构建部署
-adoc build                    # 构建静态站点
-adoc preview                  # 本地预览
-adoc deploy [github-pages|vercel]  # 部署
 ```
-
----
-
-## 使用场景
-
-### 让 Agent 写使用手册
-
-```bash
-# Agent 生成文档
-adoc create "产品介绍" --content "$(generate_intro)"
-adoc create "安装指南" --parent guide --content "..."
-adoc create "常见问题" --content "..."
-
-# 预览确认
-adoc preview
-
-# 发布上线
-adoc deploy github-pages
+┌─────────────────────────────────────────────────────────┐
+│                       ADoc                              │
+│                                                         │
+│   ┌─────────────┐    ┌─────────────┐   ┌────────────┐  │
+│   │   Agent     │    │   编辑器    │   │  文档站    │  │
+│   │  GitHub API │ →  │  ADoc Web   │ → │ GitHub     │  │
+│   │             │    │             │   │ Pages      │  │
+│   └─────────────┘    └─────────────┘   └────────────┘  │
+│         ↑                  ↑                 ↑         │
+│      Agent 调用        维护者编辑        用户阅读      │
+└─────────────────────────────────────────────────────────┘
 ```
-
-### 从飞书迁移文档
-
-```bash
-# 配置飞书凭证（adoc.config.json）
-adoc import feishu 7434170131409928194
-adoc deploy github-pages
-```
-
-### MCP 集成
-
-Claude Desktop 配置：
-```json
-{
-  "mcpServers": {
-    "adoc": { "command": "adoc-mcp" }
-  }
-}
-```
-
-然后对 Claude 说："帮我创建一篇 API 文档"
 
 ---
 
 ## 技术栈
 
-- **渲染**：VitePress（美观、SEO 友好）
-- **存储**：Markdown 文件 + JSON 索引
-- **部署**：GitHub Pages / Vercel
-- **接入**：CLI / MCP / HTTP API*
+- **前端**：React 19 + Tailwind CSS + Milkdown 编辑器
+- **存储**：GitHub 仓库（Markdown 文件）
+- **部署**：GitHub Pages（完全免费）
+- **API**：GitHub REST API（通过 @octokit/rest）
 
-*开发中
+---
+
+## 本地开发
+
+```bash
+# 克隆仓库
+git clone https://github.com/deanyes/adoc.git
+cd adoc/web
+
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+
+# 构建
+npm run build
+```
+
+---
+
+## 给 OpenClaw 用户
+
+ADoc 提供了 OpenClaw Skill，安装后你的 Agent 就能用：
+
+```bash
+# Skill 在 skills/adoc/
+# 使用方式：告诉你的 Agent
+"给 github.com/xxx/my-project 建文档"
+```
 
 ---
 
 ## 路线图
 
-- [x] CLI 核心功能
-- [x] 飞书导入
-- [x] VitePress 构建
+- [x] GitHub API 集成
+- [x] Milkdown 编辑器
+- [x] Tome 风格阅读页面
 - [x] GitHub Pages 部署
-- [x] MCP Server
 - [x] OpenClaw Skill
-- [ ] HTTP API Server
-- [ ] Docker 部署
-- [ ] npm 发布
+- [ ] 实时协作（多人编辑）
+- [ ] 评论系统
+- [ ] 版本历史
+- [ ] 自定义主题
 
 ---
 
