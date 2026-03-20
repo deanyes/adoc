@@ -51,6 +51,124 @@ Agent 会自动完成一切，给你返回文档地址。
 
 ---
 
+## Agent 使用指南
+
+Agent 通过 GitHub CLI (`gh`) 或 GitHub API 操作文档。以下是完整流程：
+
+### 1. 创建文档仓库
+
+```bash
+# 创建新仓库
+gh repo create my-project-docs --public --clone
+cd my-project-docs
+```
+
+### 2. 初始化文档结构
+
+```bash
+# 创建目录
+mkdir -p docs/{getting-started,features,faq}
+
+# 创建首页
+cat > docs/index.md << 'EOF'
+---
+title: 产品名称
+---
+
+# 欢迎使用产品名称
+
+## 快速开始
+[开始使用](getting-started/index.md)
+
+## 功能介绍
+[查看功能](features/index.md)
+
+## 常见问题
+[查看 FAQ](faq/index.md)
+EOF
+
+# 创建快速开始页面
+cat > docs/getting-started/index.md << 'EOF'
+---
+title: 快速开始
+---
+
+# 快速开始
+
+## 安装
+...
+
+## 配置
+...
+EOF
+```
+
+### 3. 启用 GitHub Pages
+
+```bash
+# 提交代码
+git add . && git commit -m "docs: initialize" && git push
+
+# 启用 GitHub Pages（使用 docs 目录）
+gh api repos/{owner}/{repo}/pages -X POST \
+  -f source='{"branch":"main","path":"/docs"}'
+```
+
+### 4. 获取文档地址
+
+```bash
+# 文档将发布到：
+echo "https://{owner}.github.io/{repo}/"
+```
+
+### 5. 更新文档
+
+```bash
+# 添加新页面
+cat > docs/new-page.md << 'EOF'
+---
+title: 新页面
+---
+
+# 新页面内容
+EOF
+
+# 提交推送
+git add . && git commit -m "docs: add new page" && git push
+```
+
+### 完整示例
+
+Agent 收到指令后的完整操作：
+
+```bash
+#!/bin/bash
+# Agent 为 my-app 项目创建文档
+
+REPO="my-app-docs"
+OWNER="username"
+
+# 1. 创建仓库
+gh repo create $REPO --public --clone
+cd $REPO
+
+# 2. 初始化文档
+mkdir -p docs
+echo "# My App 使用文档" > docs/index.md
+echo "## 快速开始" >> docs/index.md
+
+# 3. 提交
+git add . && git commit -m "docs: init" && git push
+
+# 4. 启用 Pages
+gh api repos/$OWNER/$REPO/pages -X POST -f source='{"branch":"main","path":"/docs"}'
+
+# 5. 输出结果
+echo "✅ 文档地址: https://$OWNER.github.io/$REPO/"
+```
+
+---
+
 ## 特性
 
 - ✅ **Agent 优先**：AI Agent 可以直接操作，不需要模拟点击
