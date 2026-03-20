@@ -12,97 +12,63 @@ description: |
 
 # ADoc - Agent 优先的文档工具
 
-为 GitHub 项目自动创建漂亮的使用文档，部署到 GitHub Pages。
+## 前提条件
 
-## 核心流程
-
-```
-用户："给 github.com/xxx/my-app 建文档"
-    ↓
-1. 创建文档仓库（或在现有仓库添加 docs/）
-2. 初始化 ADoc 结构
-3. 生成文档内容
-4. 配置 GitHub Pages
-5. 返回访问地址
-    ↓
-用户得到：https://xxx.github.io/my-app/
-```
-
-## 使用方法
-
-### 方式 1：为现有仓库添加文档
+确保 `gh` CLI 已安装且已登录：
 
 ```bash
-# 1. Clone 项目（如果本地没有）
-gh repo clone owner/repo
-cd repo
+# 检查是否已登录
+gh auth status
 
-# 2. 创建 docs 目录结构
-mkdir -p docs
-cat > docs/index.md << 'EOF'
+# 如果未登录，执行登录
+gh auth login
+```
+
+## 一键创建文档（直接执行）
+
+收到用户请求后，替换变量并执行以下脚本：
+
+```bash
+#!/bin/bash
+# === 配置区域（根据用户请求修改）===
+OWNER="用户的GitHub用户名"
+REPO="项目名-docs"
+PROJECT_NAME="项目名称"
+
+# === 以下自动执行，无需修改 ===
+
+# 1. 创建仓库
+gh repo create "$REPO" --public --clone || { echo "仓库创建失败"; exit 1; }
+cd "$REPO"
+
+# 2. 创建文档结构
+mkdir -p docs/{getting-started,features,faq}
+
+# 3. 创建首页
+cat > docs/index.md << EOF
 ---
-title: 首页
+title: $PROJECT_NAME
 ---
 
-# 欢迎使用 {项目名}
+# $PROJECT_NAME
 
-这是 {项目名} 的使用文档。
+欢迎使用 $PROJECT_NAME！
 
 ## 快速开始
 
-TODO: 添加快速入门指南
+查看 [快速入门指南](getting-started/index.md) 开始使用。
 
 ## 功能介绍
 
-TODO: 添加功能说明
+了解 [核心功能](features/index.md)。
 
 ## 常见问题
 
-TODO: 添加 FAQ
+遇到问题？查看 [FAQ](faq/index.md)。
 EOF
 
-# 3. 提交并推送
-git add docs/
-git commit -m "docs: add documentation"
-git push
-
-# 4. 启用 GitHub Pages
-gh api repos/{owner}/{repo}/pages -X POST -f source='{"branch":"main","path":"/docs"}' 2>/dev/null || \
-gh api repos/{owner}/{repo}/pages -X PUT -f source='{"branch":"main","path":"/docs"}'
-
-# 5. 获取文档地址
-echo "文档地址: https://{owner}.github.io/{repo}/"
-```
-
-### 方式 2：创建独立文档仓库
-
-```bash
-# 1. 创建文档仓库
-gh repo create {项目名}-docs --public --clone
-cd {项目名}-docs
-
-# 2. 初始化 ADoc 结构
-mkdir -p docs/{getting-started,features,faq}
-
-# 创建首页
-cat > docs/index.md << 'EOF'
----
-title: {项目名} 使用文档
----
-
-# {项目名}
-
-欢迎使用 {项目名}！
-
-## 目录
-
-- [快速开始](getting-started/index.md)
-- [功能介绍](features/index.md)
-- [常见问题](faq/index.md)
-EOF
-
-# 创建子页面
-cat > docs/getting-started/index.md << 'EOF'
+# 4. 创建快速开始页面
+cat > docs/getting-started/index.md << EOF
 ---
 title: 快速开始
 ---
@@ -111,98 +77,150 @@ title: 快速开始
 
 ## 安装
 
-TODO
+\`\`\`bash
+# 安装命令
+\`\`\`
 
-## 配置
+## 基本使用
 
-TODO
+1. 第一步
+2. 第二步
+3. 第三步
 EOF
 
-# 3. 添加 Jekyll 配置（GitHub Pages 默认支持）
-cat > docs/_config.yml << 'EOF'
-title: {项目名} 文档
+# 5. 创建功能介绍页面
+cat > docs/features/index.md << EOF
+---
+title: 功能介绍
+---
+
+# 功能介绍
+
+## 核心功能
+
+- 功能 1
+- 功能 2
+- 功能 3
+EOF
+
+# 6. 创建 FAQ 页面
+cat > docs/faq/index.md << EOF
+---
+title: 常见问题
+---
+
+# 常见问题
+
+## Q: 问题 1？
+
+A: 答案 1
+
+## Q: 问题 2？
+
+A: 答案 2
+EOF
+
+# 7. 创建 Jekyll 配置
+cat > docs/_config.yml << EOF
+title: $PROJECT_NAME 文档
+description: $PROJECT_NAME 使用文档
 theme: minima
 EOF
 
-# 4. 提交推送
+# 8. 提交推送
 git add .
-git commit -m "docs: initialize documentation"
-git push
+git commit -m "docs: initialize $PROJECT_NAME documentation"
+git push -u origin main
 
-# 5. 启用 GitHub Pages
-gh api repos/{owner}/{项目名}-docs/pages -X POST -f source='{"branch":"main","path":"/docs"}'
+# 9. 启用 GitHub Pages
+sleep 2
+gh api "repos/$OWNER/$REPO/pages" -X POST -f source='{"branch":"main","path":"/docs"}' 2>/dev/null || \
+gh api "repos/$OWNER/$REPO/pages" -X PUT -f source='{"branch":"main","path":"/docs"}' 2>/dev/null
 
-echo "文档地址: https://{owner}.github.io/{项目名}-docs/"
+# 10. 输出结果
+echo ""
+echo "✅ 文档创建完成！"
+echo ""
+echo "📖 文档地址：https://$OWNER.github.io/$REPO/"
+echo "✏️ 编辑地址：https://deanyes.github.io/adoc/"
+echo ""
+echo "注意：GitHub Pages 需要 1-2 分钟生效"
 ```
 
-## 文档结构约定
+## 为现有仓库添加文档
 
-```
-docs/
-├── index.md              # 首页
-├── _config.yml           # Jekyll 配置
-├── getting-started/      # 快速入门
-│   └── index.md
-├── features/             # 功能介绍
-│   └── index.md
-├── faq/                  # 常见问题
-│   └── index.md
-└── changelog/            # 更新日志
-    └── index.md
-```
-
-## 文档模板
-
-### Frontmatter 格式
-
-```yaml
----
-title: 页面标题
-description: 页面描述（可选）
----
-```
-
-### Markdown 规范
-
-- 使用 `#` 作为页面主标题（与 frontmatter title 一致）
-- 使用 `##` 作为章节标题
-- 代码块标注语言：```python, ```bash 等
-- 图片放在 `docs/images/` 目录
-
-## 高级功能
-
-### 使用 ADoc 编辑器
-
-如需可视化编辑，访问：https://deanyes.github.io/adoc/
-
-1. 粘贴 GitHub Token（需要 repo 权限）
-2. 选择文档仓库
-3. 在编辑器中修改
-4. 保存自动推送
-
-### 自定义域名
+如果用户已有项目仓库，想在里面加文档：
 
 ```bash
-# 在 docs/ 目录添加 CNAME 文件
-echo "docs.example.com" > docs/CNAME
-git add docs/CNAME && git commit -m "docs: add custom domain" && git push
+#!/bin/bash
+# === 配置 ===
+OWNER="用户的GitHub用户名"
+REPO="现有仓库名"
+PROJECT_NAME="项目名称"
 
-# 在域名 DNS 添加 CNAME 记录指向 {owner}.github.io
+# === 执行 ===
+gh repo clone "$OWNER/$REPO"
+cd "$REPO"
+
+mkdir -p docs
+cat > docs/index.md << EOF
+---
+title: $PROJECT_NAME 使用文档
+---
+
+# $PROJECT_NAME
+
+使用文档内容...
+EOF
+
+git add docs/
+git commit -m "docs: add documentation"
+git push
+
+gh api "repos/$OWNER/$REPO/pages" -X POST -f source='{"branch":"main","path":"/docs"}' 2>/dev/null || \
+gh api "repos/$OWNER/$REPO/pages" -X PUT -f source='{"branch":"main","path":"/docs"}'
+
+echo "✅ 文档地址：https://$OWNER.github.io/$REPO/"
+```
+
+## 添加/更新文档页面
+
+```bash
+# 添加新页面
+cat > docs/new-page.md << 'EOF'
+---
+title: 新页面标题
+---
+
+# 新页面标题
+
+内容...
+EOF
+
+git add . && git commit -m "docs: add new page" && git push
+```
+
+## 获取用户的 GitHub 用户名
+
+```bash
+gh api user --jq '.login'
 ```
 
 ## 输出格式
 
-完成后返回：
+完成后必须返回：
 
 ```
 ✅ 文档创建完成！
 
 📖 文档地址：https://{owner}.github.io/{repo}/
-✏️ 编辑地址：https://deanyes.github.io/adoc/ （选择仓库 {owner}/{repo}）
+✏️ 编辑地址：https://deanyes.github.io/adoc/
 
 文档结构：
 - docs/index.md - 首页
-- docs/getting-started/ - 快速入门
-- docs/features/ - 功能介绍
-- docs/faq/ - 常见问题
+- docs/getting-started/index.md - 快速开始
+- docs/features/index.md - 功能介绍
+- docs/faq/index.md - 常见问题
+
+提示：GitHub Pages 需要 1-2 分钟生效，届时即可访问文档地址。
 ```
