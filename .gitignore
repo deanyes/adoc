@@ -2,3 +2,6 @@ node_modules/
 dist/
 *.log
 .DS_Store
+projects/
+server/node_modules/
+web/node_modules/
