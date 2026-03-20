@@ -17,179 +17,68 @@ description: |
 确保 `gh` CLI 已安装且已登录：
 
 ```bash
-# 检查是否已登录
 gh auth status
-
-# 如果未登录，执行登录
-gh auth login
 ```
 
-## 一键创建文档（直接执行）
-
-收到用户请求后，替换变量并执行以下脚本：
+## 一键创建文档（使用 ADoc Tome 模板）
 
 ```bash
 #!/bin/bash
 # === 配置区域（根据用户请求修改）===
-OWNER="用户的GitHub用户名"
-REPO="项目名-docs"
-PROJECT_NAME="项目名称"
+PROJECT_NAME="项目名称"      # 例如：My App
+REPO_NAME="项目名-docs"      # 例如：my-app-docs
 
-# === 以下自动执行，无需修改 ===
+# === 以下自动执行 ===
 
-# 1. 创建仓库
-gh repo create "$REPO" --public --clone || { echo "仓库创建失败"; exit 1; }
-cd "$REPO"
+# 1. 获取用户名
+OWNER=$(gh api user --jq '.login')
 
-# 2. 创建文档结构
-mkdir -p docs/{getting-started,features,faq}
+# 2. 从模板创建仓库
+gh repo create "$REPO_NAME" --public --clone --template deanyes/adoc-template
+cd "$REPO_NAME"
 
-# 3. 创建首页
-cat > docs/index.md << EOF
----
-title: $PROJECT_NAME
----
+# 3. 修改配置文件中的项目名
+sed -i '' "s/ADoc Template/$PROJECT_NAME/g" docs/.vitepress/config.mts 2>/dev/null || \
+sed -i "s/ADoc Template/$PROJECT_NAME/g" docs/.vitepress/config.mts
 
-# $PROJECT_NAME
+sed -i '' "s/ADoc Template/$PROJECT_NAME/g" docs/index.md 2>/dev/null || \
+sed -i "s/ADoc Template/$PROJECT_NAME/g" docs/index.md
 
-欢迎使用 $PROJECT_NAME！
+# 4. 提交修改
+git add -A
+git commit -m "docs: customize for $PROJECT_NAME"
+git push
 
-## 快速开始
-
-查看 [快速入门指南](getting-started/index.md) 开始使用。
-
-## 功能介绍
-
-了解 [核心功能](features/index.md)。
-
-## 常见问题
-
-遇到问题？查看 [FAQ](faq/index.md)。
-EOF
-
-# 4. 创建快速开始页面
-cat > docs/getting-started/index.md << EOF
----
-title: 快速开始
----
-
-# 快速开始
-
-## 安装
-
-\`\`\`bash
-# 安装命令
-\`\`\`
-
-## 基本使用
-
-1. 第一步
-2. 第二步
-3. 第三步
-EOF
-
-# 5. 创建功能介绍页面
-cat > docs/features/index.md << EOF
----
-title: 功能介绍
----
-
-# 功能介绍
-
-## 核心功能
-
-- 功能 1
-- 功能 2
-- 功能 3
-EOF
-
-# 6. 创建 FAQ 页面
-cat > docs/faq/index.md << EOF
----
-title: 常见问题
----
-
-# 常见问题
-
-## Q: 问题 1？
-
-A: 答案 1
-
-## Q: 问题 2？
-
-A: 答案 2
-EOF
-
-# 7. 创建 Jekyll 配置
-cat > docs/_config.yml << EOF
-title: $PROJECT_NAME 文档
-description: $PROJECT_NAME 使用文档
-theme: minima
-EOF
-
-# 8. 提交推送
-git add .
-git commit -m "docs: initialize $PROJECT_NAME documentation"
-git push -u origin main
-
-# 9. 启用 GitHub Pages
+# 5. 启用 GitHub Pages
 sleep 2
-gh api "repos/$OWNER/$REPO/pages" -X POST -f source='{"branch":"main","path":"/docs"}' 2>/dev/null || \
-gh api "repos/$OWNER/$REPO/pages" -X PUT -f source='{"branch":"main","path":"/docs"}' 2>/dev/null
+gh api "repos/$OWNER/$REPO_NAME/pages" -X POST \
+  -f build_type="workflow" 2>/dev/null || \
+gh api "repos/$OWNER/$REPO_NAME/pages" -X PUT \
+  -f build_type="workflow" 2>/dev/null || \
+echo "请手动在 Settings > Pages 启用 GitHub Actions 部署"
 
-# 10. 输出结果
+# 6. 输出结果
 echo ""
 echo "✅ 文档创建完成！"
 echo ""
-echo "📖 文档地址：https://$OWNER.github.io/$REPO/"
-echo "✏️ 编辑地址：https://deanyes.github.io/adoc/"
+echo "📖 文档地址：https://$OWNER.github.io/$REPO_NAME/"
+echo "📁 仓库地址：https://github.com/$OWNER/$REPO_NAME"
 echo ""
-echo "注意：GitHub Pages 需要 1-2 分钟生效"
+echo "下一步："
+echo "1. 编辑 docs/ 目录下的 Markdown 文件添加内容"
+echo "2. git add . && git commit -m 'docs: update' && git push"
+echo "3. GitHub Actions 会自动构建部署"
+echo ""
+echo "注意：首次部署需要 2-3 分钟"
 ```
 
-## 为现有仓库添加文档
-
-如果用户已有项目仓库，想在里面加文档：
+## 添加新页面
 
 ```bash
-#!/bin/bash
-# === 配置 ===
-OWNER="用户的GitHub用户名"
-REPO="现有仓库名"
-PROJECT_NAME="项目名称"
-
-# === 执行 ===
-gh repo clone "$OWNER/$REPO"
-cd "$REPO"
-
-mkdir -p docs
-cat > docs/index.md << EOF
----
-title: $PROJECT_NAME 使用文档
----
-
-# $PROJECT_NAME
-
-使用文档内容...
-EOF
-
-git add docs/
-git commit -m "docs: add documentation"
-git push
-
-gh api "repos/$OWNER/$REPO/pages" -X POST -f source='{"branch":"main","path":"/docs"}' 2>/dev/null || \
-gh api "repos/$OWNER/$REPO/pages" -X PUT -f source='{"branch":"main","path":"/docs"}'
-
-echo "✅ 文档地址：https://$OWNER.github.io/$REPO/"
-```
-
-## 添加/更新文档页面
-
-```bash
-# 添加新页面
+# 在 docs/ 目录下创建 Markdown 文件
 cat > docs/new-page.md << 'EOF'
 ---
-title: 新页面标题
+title: 新页面
 ---
 
 # 新页面标题
@@ -197,30 +86,50 @@ title: 新页面标题
 内容...
 EOF
 
-git add . && git commit -m "docs: add new page" && git push
+# 如果需要侧边栏显示，编辑 docs/.vitepress/config.mts 添加到 sidebar
 ```
 
-## 获取用户的 GitHub 用户名
+## 修改主题颜色
 
-```bash
-gh api user --jq '.login'
+编辑 `docs/.vitepress/theme/style.css`，修改 CSS 变量：
+
+```css
+:root {
+  --vp-c-brand-1: #F59E0B;  /* 主色 */
+  --vp-c-brand-2: #D97706;  /* 悬停色 */
+}
+```
+
+## 文档结构
+
+```
+docs/
+├── index.md              # 首页
+├── getting-started/      # 快速开始
+│   └── index.md
+├── features/             # 功能介绍
+│   └── index.md
+└── .vitepress/
+    ├── config.mts        # 站点配置
+    └── theme/
+        ├── index.js      # 主题入口
+        └── style.css     # Tome 样式
 ```
 
 ## 输出格式
 
-完成后必须返回：
+完成后返回：
 
 ```
 ✅ 文档创建完成！
 
 📖 文档地址：https://{owner}.github.io/{repo}/
-✏️ 编辑地址：https://deanyes.github.io/adoc/
+📁 仓库地址：https://github.com/{owner}/{repo}
 
-文档结构：
-- docs/index.md - 首页
-- docs/getting-started/index.md - 快速开始
-- docs/features/index.md - 功能介绍
-- docs/faq/index.md - 常见问题
+下一步：
+1. 编辑 docs/ 目录下的 Markdown 文件添加内容
+2. git add . && git commit -m 'docs: update' && git push
+3. GitHub Actions 会自动构建部署
 
-提示：GitHub Pages 需要 1-2 分钟生效，届时即可访问文档地址。
+注意：首次部署需要 2-3 分钟
 ```
